@@ -29,7 +29,13 @@ yay -S nolio
 
 ## 🖥️ Screenshots
 
-*Screenshots coming soon.*
+| Calendar | Todos |
+|---------|-------|
+| ![Calendar](screenshots/calendar.png) | ![Todos](screenshots/todos.png) |
+
+| Timer | Settings |screenshot
+|-------|----------|
+| ![Timer](screenshots/timer.png) | ![Settings](screenshots/settings.png) |
 
 ---
 
