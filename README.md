@@ -25,7 +25,7 @@ Built with **Flutter** and designed primarily for **Linux desktop**, Nolio lets 
 
 ```bash
 yay -S nolio
-
+```
 ---
 
 ## 🖥️ Screenshots
