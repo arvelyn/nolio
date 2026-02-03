@@ -1,16 +1,89 @@
-# nolio
+# Nolio
 
-A new Flutter project.
+**Nolio** is a minimal, calendar-based todo app focused on clarity, smooth interactions, and distraction-free task planning.
 
-## Getting Started
+Built with **Flutter** and designed primarily for **Linux desktop**, Nolio lets you plan tasks day-by-day with a clean, modern UI that stays out of your way.
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## ✨ Features
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- 📅 Calendar-based task planning  
+- ✅ Date-specific todos  
+- 🏷️ Tags with color support  
+- ⏱️ Built-in timer  
+- 🎨 Accent color customization  
+- 🧊 Glass-style UI with smooth animations  
+- 🐧 Native Linux desktop application  
+- ⌨️ Keyboard-friendly workflow  
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
+
+## 📦 Installation
+
+### Arch Linux (AUR)
+
+```bash
+yay -S nolio
+
+---
+
+## 🖥️ Screenshots
+
+*Screenshots coming soon.*
+
+---
+
+## 🛠️ Development
+
+### Requirements
+
+* Flutter (Linux desktop enabled)
+* Dart SDK
+
+### Run locally
+
+```bash
+flutter pub get
+flutter run -d linux
+```
+
+---
+
+## 🧭 Roadmap
+
+* 📊 Overview / timeline view (all tasks sorted by date)
+* 📱 Android support
+* 🪟 Windows support
+* 🔔 Notifications
+* ☁️ Optional sync
+
+---
+
+## 🤝 Contributing
+
+Contributions, ideas, and feedback are welcome.
+
+Feel free to:
+
+* Open issues for bugs or feature requests
+* Submit pull requests for improvements
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License**.
+See the [LICENSE](LICENSE) file for details.
+
+---
+
+## 👤 Author
+
+Made by **Grey-007**
+
+GitHub: [https://github.com/Grey-007](https://github.com/Grey-007)
+
+````
+
+---
