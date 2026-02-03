@@ -1,94 +1,133 @@
-# Nolio
+# 🗓️ Nolio
 
-**Nolio** is a minimal, calendar-based todo app focused on clarity, smooth interactions, and distraction-free task planning.
+**Nolio** is a minimal, calendar-based todo app built with **Flutter**, focused on simplicity, clarity, and a clean desktop experience on Linux.
 
-Built with **Flutter** and designed primarily for **Linux desktop**, Nolio lets you plan tasks day-by-day with a clean, modern UI that stays out of your way.
+> Designed to stay out of your way while helping you plan your day.
+
+[![AUR](https://img.shields.io/aur/version/nolio?label=AUR%20(nolio)&logo=archlinux)](https://aur.archlinux.org/packages/nolio)
+[![AUR-bin](https://img.shields.io/aur/version/nolio-bin?label=AUR%20(nolio-bin)&logo=archlinux)](https://aur.archlinux.org/packages/nolio-bin)
+[![GitHub release](https://img.shields.io/github/v/release/Grey-007/nolio?include_prereleases&label=release)](https://github.com/Grey-007/nolio/releases)
+[![License](https://img.shields.io/github/license/Grey-007/nolio)](LICENSE)
+
+
+[![Flutter](https://img.shields.io/badge/Flutter-3.x-blue?logo=flutter)](https://flutter.dev)
+[![Platform](https://img.shields.io/badge/platform-Linux--only-blue?logo=linux)](https://www.kernel.org/)
+[![Display](https://img.shields.io/badge/display-Wayland%20%7C%20X11-success)](https://wayland.freedesktop.org/)
+
 
 ---
 
 ## ✨ Features
 
-- 📅 Calendar-based task planning  
-- ✅ Date-specific todos  
-- 🏷️ Tags with color support  
-- ⏱️ Built-in timer  
-- 🎨 Accent color customization  
-- 🐧 Native Linux desktop application  
-- ⌨️ Keyboard-friendly workflow  
+* 📅 Calendar-centric task management
+* 🎨 Clean, minimal UI with consistent spacing
+* 🌗 Works well with light and dark themes
+* ⌨️ Keyboard & mouse friendly
+* 🐧 Native Linux desktop app (Wayland & X11)
 
 ---
 
-## 📦 Installation
+## 🆕 What’s New in v0.2.0
 
-### Arch Linux (AUR)
+* Major **UI/UX redesign**
+* Improved layout, spacing, and visual hierarchy
+* Smoother animations and interactions
+* More consistent navigation flow
+* Improved stability and window behavior
+
+> The interface may feel different on first launch — this is intentional.
+
+---
+
+## 📦 Installation (Arch Linux)
+
+### Option 1: Binary (Recommended)
+
+Fastest install, no build required.
+
+```bash
+yay -S nolio-bin
+```
+
+### Option 2: Build from Source
+
+Builds the app locally using Flutter.
 
 ```bash
 yay -S nolio
 ```
----
-
-## 🖥️ Screenshots
-
-| Calendar | Todos |
-|---------|-------|
-| ![Calendar](screenshots/calendar.png) | ![Todos](screenshots/todos.png) |
-
-| Timer | Settings |screenshot
-|-------|----------|
-| ![Timer](screenshots/timer.png) | ![Settings](screenshots/settings.png) |
 
 ---
 
-## 🛠️ Development
+## 🚀 Usage
 
-### Requirements
+Launch from terminal:
 
-* Flutter (Linux desktop enabled)
-* Dart SDK
+```bash
+nolio
+```
 
-### Run locally
+Or start it from your application launcher.
+
+---
+
+## 🛠️ Built With
+
+* **Flutter** (Linux desktop)
+* **Dart**
+* GTK-based Linux runtime
+
+---
+
+## 📸 Screenshots
+
+* uploading soon *
+
+---
+
+## 🧩 Development
+
+Clone the repo:
+
+```bash
+git clone https://github.com/Grey-007/nolio.git
+cd nolio
+```
+
+Run in development mode:
 
 ```bash
 flutter pub get
 flutter run -d linux
 ```
 
----
+Build release:
 
-## 🧭 Roadmap
-
-* 📊 Overview / timeline view (all tasks sorted by date)
-* 📱 Android support
-* 🪟 Windows support
-* 🔔 Notifications
-* ☁️ Optional sync
+```bash
+flutter build linux --release
+```
 
 ---
 
 ## 🤝 Contributing
 
-Contributions, ideas, and feedback are welcome.
+Contributions, bug reports, and UI feedback are welcome.
 
-Feel free to:
-
-* Open issues for bugs or feature requests
-* Submit pull requests for improvements
+* Open an issue for bugs or suggestions
+* Keep changes focused and clean
+* UI/UX feedback is especially appreciated
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **MIT License**.
-See the [LICENSE](LICENSE) file for details.
+MIT License
+See [`LICENSE`](LICENSE) for details.
 
 ---
 
-## 👤 Author
+## ❤️ Credits
 
-Made by **Grey-007**
-
-GitHub: [https://github.com/Grey-007](https://github.com/Grey-007)
-
-````
+Built and maintained by **Grey-007**.
 
 ---
