@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../data/todo_db.dart';
 
 class TodosPage extends StatefulWidget {
@@ -10,117 +11,159 @@ class TodosPage extends StatefulWidget {
 }
 
 class _TodosPageState extends State<TodosPage> {
-  final TextEditingController controller = TextEditingController();
+  final taskCtrl = TextEditingController();
+  final tagCtrl = TextEditingController();
+  Color tagColor = Colors.blue;
+
   List<Map<String, dynamic>> todos = [];
 
   String get dateKey =>
       widget.selectedDate.toIso8601String().split('T')[0];
 
   @override
-  void didUpdateWidget(covariant TodosPage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selectedDate != widget.selectedDate) {
-      loadTodos();
-    }
-  }
-
-  @override
   void initState() {
     super.initState();
-    loadTodos();
+    load();
   }
 
-  Future<void> loadTodos() async {
-    final data = await TodoDB.instance.getTodos(dateKey);
-    setState(() => todos = data);
+  Future<void> load() async {
+    todos = await TodoDB.instance.getTodos(dateKey);
+    setState(() {});
   }
 
-  Future<void> addTodo() async {
-    final text = controller.text.trim();
-    if (text.isEmpty) return;
-
-    await TodoDB.instance.addTodo(dateKey, text);
-    controller.clear();
-    loadTodos();
-  }
-
-  Future<void> toggle(int id, bool done) async {
-    await TodoDB.instance.toggleDone(id, done);
-    loadTodos();
+  Future<void> add() async {
+    if (taskCtrl.text.trim().isEmpty) return;
+    await TodoDB.instance.addTodo(
+      dateKey,
+      taskCtrl.text,
+      '${tagCtrl.text}|${tagColor.value}',
+    );
+    taskCtrl.clear();
+    tagCtrl.clear();
+    load();
   }
 
   @override
   Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: controller,
-                      decoration: const InputDecoration(
-                        hintText: 'Add todo',
-                        filled: true,
-                        border: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.all(Radius.circular(12)),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      onSubmitted: (_) => addTodo(),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    onPressed: addTodo,
-                  ),
-                ],
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: taskCtrl,
+                  decoration: const InputDecoration(labelText: 'Task'),
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 90,
+                child: TextField(
+                  controller: tagCtrl,
+                  decoration: const InputDecoration(labelText: '#tag'),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.color_lens, color: tagColor),
+                onPressed: () async {
+                  final c = await showDialog<Color>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('Tag color'),
+                      content: Wrap(
+                        spacing: 14,
+                        runSpacing: 14, 
+                        children: Colors.primaries.map((c) {
+                          return GestureDetector(
+                            onTap: () => Navigator.pop(context, c),
+                            child: CircleAvatar(backgroundColor: c),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  );
+                  if (c != null) setState(() => tagColor = c);
+                },
+              ),
+              IconButton(
+                icon: Icon(Icons.add, color: accent),
+                onPressed: add,
+              ),
+            ],
           ),
+
           const SizedBox(height: 16),
+
           Expanded(
-            child: todos.isEmpty
-                ? const Center(child: Text('No todos'))
-                : ListView.builder(
-                    itemCount: todos.length,
-                    itemBuilder: (context, i) {
-                      final t = todos[i];
-                      return Card(
-                        elevation: 0,
-                        margin:
-                            const EdgeInsets.symmetric(vertical: 4),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: CheckboxListTile(
-                          value: t['done'] == 1,
-                          title: Text(
-                            t['text'],
-                            style: TextStyle(
-                              decoration: t['done'] == 1
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                            ),
-                          ),
-                          onChanged: (v) =>
-                              toggle(t['id'], v ?? false),
-                        ),
-                      );
-                    },
+            child: ReorderableListView(
+              onReorder: (oldI, newI) async {
+                if (newI > oldI) newI--;
+                final item = todos.removeAt(oldI);
+                todos.insert(newI, item);
+                setState(() {});
+                for (int i = 0; i < todos.length; i++) {
+                  await TodoDB.instance.reorder(todos[i]['id'], i);
+                }
+              },
+              children: [
+                for (final t in todos)
+                  KeyedSubtree(
+                    key: ValueKey(t['id']),
+                    child: _TodoCard(t: t),
                   ),
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
+}
+
+class _TodoCard extends StatelessWidget {
+  final Map<String, dynamic> t;
+  const _TodoCard({required this.t});
+
+  @override
+  Widget build(BuildContext context) {
+    String tag = '';
+    Color tagColor = Colors.grey;
+
+    if (t['tag'] != null && t['tag'].toString().contains('|')) {
+      final parts = t['tag'].split('|');
+      tag = parts[0];
+      tagColor = Color(int.parse(parts[1]));
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          left: BorderSide(
+            width: 4,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.task_alt, size: 18),
+          const SizedBox(width: 10),
+          Expanded(child: Text(t['text'])),
+          if (tag.isNotEmpty)
+            Chip(
+              avatar: Icon(Icons.tag, size: 14, color: tagColor),
+              label: Text(tag),
+            ),
+        ],
+      ),
+    ).animate().fadeIn().slideX(begin: 0.1);
   }
 }

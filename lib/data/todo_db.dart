@@ -13,21 +13,29 @@ class TodoDB {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
 
-    final Directory dir = await getApplicationSupportDirectory();
-    final String path = join(dir.path, 'nolio.db');
+    final dir = await getApplicationSupportDirectory();
+    final path = join(dir.path, 'nolio.db');
 
     db = await openDatabase(
       path,
-      version: 1,
-      onCreate: (db, version) async {
+      version: 2,
+      onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE todos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL,
             text TEXT NOT NULL,
+            tag TEXT,
+            position INTEGER,
             done INTEGER NOT NULL DEFAULT 0
           )
         ''');
+      },
+      onUpgrade: (db, old, _) async {
+        if (old < 2) {
+          await db.execute('ALTER TABLE todos ADD COLUMN tag TEXT');
+          await db.execute('ALTER TABLE todos ADD COLUMN position INTEGER');
+        }
       },
     );
   }
@@ -37,22 +45,34 @@ class TodoDB {
       'todos',
       where: 'date = ?',
       whereArgs: [date],
-      orderBy: 'id DESC',
+      orderBy: 'position ASC',
     );
   }
 
-  Future<void> addTodo(String date, String text) async {
+  Future<void> addTodo(String date, String text, String tag) async {
+    final res = await db.rawQuery(
+      'SELECT MAX(position) as maxPos FROM todos WHERE date = ?',
+      [date],
+    );
+
+    final maxPos =
+        res.isNotEmpty && res.first['maxPos'] != null
+            ? res.first['maxPos'] as int
+            : 0;
+
     await db.insert('todos', {
       'date': date,
       'text': text,
+      'tag': tag,
+      'position': maxPos + 1,
       'done': 0,
     });
   }
 
-  Future<void> toggleDone(int id, bool done) async {
+  Future<void> reorder(int id, int newPos) async {
     await db.update(
       'todos',
-      {'done': done ? 1 : 0},
+      {'position': newPos},
       where: 'id = ?',
       whereArgs: [id],
     );

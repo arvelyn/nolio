@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'data/todo_db.dart';
 import 'features/calendar/calendar_page.dart';
 import 'features/todos/todos_page.dart';
+import 'features/timer/timer_page.dart';
+import 'features/settings/settings_page.dart';
+import 'features/timeline/timeline_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,30 +27,44 @@ void main() async {
   runApp(const NolioApp());
 }
 
-class NolioApp extends StatelessWidget {
+/// ─────────────────────────────────────────────
+/// App root (accent color state lives here)
+/// ─────────────────────────────────────────────
+class NolioApp extends StatefulWidget {
   const NolioApp({super.key});
+
+  @override
+  State<NolioApp> createState() => _NolioAppState();
+}
+
+class _NolioAppState extends State<NolioApp> {
+  Color accent = const Color(0xFF1DB954);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Nolio',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1DB954),
+          seedColor: accent,
           brightness: Brightness.dark,
         ),
-        scaffoldBackgroundColor: const Color(0xFF121212),
       ),
-      home: const AppShell(),
+      home: AppShell(
+        onAccentChange: (c) => setState(() => accent = c),
+      ),
     );
   }
 }
 
+/// ─────────────────────────────────────────────
+/// Main app shell (sidebar + pages)
+/// ─────────────────────────────────────────────
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  final ValueChanged<Color> onAccentChange;
+  const AppShell({super.key, required this.onAccentChange});
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -55,15 +73,6 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int index = 0;
   DateTime selectedDate = DateTime.now();
-  final PageController controller = PageController();
-
-  void goToTodos() {
-    controller.animateToPage(
-      1,
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeOutCubic,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,47 +80,156 @@ class _AppShellState extends State<AppShell> {
       CalendarPage(
         selectedDate: selectedDate,
         onDateSelected: (d) => setState(() => selectedDate = d),
-        onOpenTodos: goToTodos,
+        onOpenTodos: () => setState(() => index = 1),
       ),
-      TodosPage(selectedDate: selectedDate),
-      const Center(
-        child: Text(
-          'Timer (coming soon)',
-          style: TextStyle(color: Colors.grey),
-        ),
+      _ContentShell(child: TodosPage(selectedDate: selectedDate)),
+      const _ContentShell(child: TimerPage()),
+      const _ContentShell(child: TimelinePage()), // 4th tab (Coming Soon)
+      _ContentShell(
+        child: SettingsPage(onAccentChange: widget.onAccentChange),
       ),
     ];
 
     return Scaffold(
-      body: PageView(
-        controller: controller,
-        physics: const BouncingScrollPhysics(),
-        onPageChanged: (i) => setState(() => index = i),
-        children: pages,
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) {
-          controller.animateToPage(
-            i,
-            duration: const Duration(milliseconds: 350),
-            curve: Curves.easeOutCubic,
-          );
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month),
-            label: 'Calendar',
+      body: Row(
+        children: [
+          _SideNav(
+            selectedIndex: index,
+            onSelect: (i) => setState(() => index = i),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.check_circle),
-            label: 'Todos',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.timer),
-            label: 'Timer',
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: 250.ms,
+              switchInCurve: Curves.easeOutCubic,
+              child: pages[index],
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// ─────────────────────────────────────────────
+/// Custom left sidebar (uniform + hover)
+/// ─────────────────────────────────────────────
+class _SideNav extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onSelect;
+
+  const _SideNav({
+    required this.selectedIndex,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+
+    final icons = [
+      Icons.calendar_month, // Calendar
+      Icons.check_circle,   // Todos
+      Icons.timer,          // Timer
+      Icons.view_agenda,    // Overview (coming soon)
+      Icons.settings,       // Settings
+    ];
+
+    return Container(
+      width: 72,
+      color: Colors.black.withOpacity(0.15),
+      child: Column(
+        children: [
+          const Spacer(),
+          for (int i = 0; i < icons.length; i++)
+            _NavIcon(
+              icon: icons[i],
+              selected: selectedIndex == i,
+              accent: accent,
+              onTap: () => onSelect(i),
+            ),
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+}
+
+class _NavIcon extends StatefulWidget {
+  final IconData icon;
+  final bool selected;
+  final Color accent;
+  final VoidCallback onTap;
+
+  const _NavIcon({
+    required this.icon,
+    required this.selected,
+    required this.accent,
+    required this.onTap,
+  });
+
+  @override
+  State<_NavIcon> createState() => _NavIconState();
+}
+
+class _NavIconState extends State<_NavIcon> {
+  bool hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.selected
+        ? widget.accent
+        : hover
+            ? Colors.white
+            : Colors.white54;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => hover = true),
+      onExit: (_) => setState(() => hover = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          margin: const EdgeInsets.symmetric(vertical: 14),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: widget.selected
+                ? widget.accent.withOpacity(0.15)
+                : hover
+                    ? Colors.white.withOpacity(0.08)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(
+            widget.icon,
+            size: 28,
+            color: color,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// ─────────────────────────────────────────────
+/// Content wrapper (for non-calendar tabs)
+/// ─────────────────────────────────────────────
+class _ContentShell extends StatelessWidget {
+  final Widget child;
+  const _ContentShell({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: child,
+        ),
       ),
     );
   }
