@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'data/todo_db.dart';
 import 'features/calendar/calendar_page.dart';
 import 'features/todos/todos_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
+  await TodoDB.instance.init();
 
   const windowOptions = WindowOptions(
     titleBarStyle: TitleBarStyle.hidden,
@@ -52,23 +54,39 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int index = 0;
+  DateTime selectedDate = DateTime.now();
   final PageController controller = PageController();
 
-  final pages = const [
-    CalendarPage(),
-    TodosPage(),
-    Center(child: Text('Timer')),
-  ];
+  void goToTodos() {
+    controller.animateToPage(
+      1,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final pages = [
+      CalendarPage(
+        selectedDate: selectedDate,
+        onDateSelected: (d) => setState(() => selectedDate = d),
+        onOpenTodos: goToTodos,
+      ),
+      TodosPage(selectedDate: selectedDate),
+      const Center(
+        child: Text(
+          'Timer (coming soon)',
+          style: TextStyle(color: Colors.grey),
+        ),
+      ),
+    ];
+
     return Scaffold(
       body: PageView(
         controller: controller,
         physics: const BouncingScrollPhysics(),
-        onPageChanged: (i) {
-          setState(() => index = i);
-        },
+        onPageChanged: (i) => setState(() => index = i),
         children: pages,
       ),
       bottomNavigationBar: NavigationBar(
@@ -76,7 +94,7 @@ class _AppShellState extends State<AppShell> {
         onDestinationSelected: (i) {
           controller.animateToPage(
             i,
-            duration: const Duration(milliseconds: 300),
+            duration: const Duration(milliseconds: 350),
             curve: Curves.easeOutCubic,
           );
         },
