@@ -77,4 +77,21 @@ class TodoDB {
       whereArgs: [id],
     );
   }
+
+  Future<void> toggleDone(int id, bool done) async {
+    await db.update(
+      'todos',
+      {'done': done ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> deleteTodo(int id) async {
+    await db.delete(
+      'todos',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
 }

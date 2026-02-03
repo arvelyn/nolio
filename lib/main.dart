@@ -1,35 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:window_manager/window_manager.dart';
 
 import 'data/todo_db.dart';
 import 'features/calendar/calendar_page.dart';
-import 'features/todos/todos_page.dart';
 import 'features/timer/timer_page.dart';
-import 'features/settings/settings_page.dart';
 import 'features/timeline/timeline_page.dart';
+import 'features/settings/settings_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
   await TodoDB.instance.init();
-
-  const windowOptions = WindowOptions(
-    titleBarStyle: TitleBarStyle.hidden,
-    backgroundColor: Colors.transparent,
-  );
-
-  windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-  });
 
   runApp(const NolioApp());
 }
 
-/// ─────────────────────────────────────────────
-/// App root (accent color state lives here)
-/// ─────────────────────────────────────────────
 class NolioApp extends StatefulWidget {
   const NolioApp({super.key});
 
@@ -59,9 +43,6 @@ class _NolioAppState extends State<NolioApp> {
   }
 }
 
-/// ─────────────────────────────────────────────
-/// Main app shell (sidebar + pages)
-/// ─────────────────────────────────────────────
 class AppShell extends StatefulWidget {
   final ValueChanged<Color> onAccentChange;
   const AppShell({super.key, required this.onAccentChange});
@@ -80,11 +61,9 @@ class _AppShellState extends State<AppShell> {
       CalendarPage(
         selectedDate: selectedDate,
         onDateSelected: (d) => setState(() => selectedDate = d),
-        onOpenTodos: () => setState(() => index = 1),
       ),
-      _ContentShell(child: TodosPage(selectedDate: selectedDate)),
       const _ContentShell(child: TimerPage()),
-      const _ContentShell(child: TimelinePage()), // 4th tab (Coming Soon)
+      const _ContentShell(child: TimelinePage()),
       _ContentShell(
         child: SettingsPage(onAccentChange: widget.onAccentChange),
       ),
@@ -99,8 +78,20 @@ class _AppShellState extends State<AppShell> {
           ),
           Expanded(
             child: AnimatedSwitcher(
-              duration: 250.ms,
-              switchInCurve: Curves.easeOutCubic,
+              duration: const Duration(milliseconds: 400),
+              switchInCurve: Curves.easeInOutCubic,
+              switchOutCurve: Curves.easeInOutCubic,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+                      CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+                    ),
+                    child: child,
+                  ),
+                );
+              },
               child: pages[index],
             ),
           ),
@@ -111,7 +102,7 @@ class _AppShellState extends State<AppShell> {
 }
 
 /// ─────────────────────────────────────────────
-/// Custom left sidebar (uniform + hover)
+/// Custom left sidebar with smooth animations
 /// ─────────────────────────────────────────────
 class _SideNav extends StatelessWidget {
   final int selectedIndex;
@@ -128,15 +119,16 @@ class _SideNav extends StatelessWidget {
 
     final icons = [
       Icons.calendar_month, // Calendar
-      Icons.check_circle,   // Todos
       Icons.timer,          // Timer
-      Icons.view_agenda,    // Overview (coming soon)
+      Icons.view_agenda,    // Timeline
       Icons.settings,       // Settings
     ];
 
     return Container(
       width: 72,
-      color: Colors.black.withOpacity(0.15),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.15),
+      ),
       child: Column(
         children: [
           const Spacer(),
@@ -171,8 +163,38 @@ class _NavIcon extends StatefulWidget {
   State<_NavIcon> createState() => _NavIconState();
 }
 
-class _NavIconState extends State<_NavIcon> {
+class _NavIconState extends State<_NavIcon> with SingleTickerProviderStateMixin {
   bool hover = false;
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOutQuad),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(_NavIcon oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.selected && !oldWidget.selected) {
+      _controller.forward();
+    } else if (!widget.selected && oldWidget.selected) {
+      _controller.reverse();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -183,26 +205,38 @@ class _NavIconState extends State<_NavIcon> {
             : Colors.white54;
 
     return MouseRegion(
-      onEnter: (_) => setState(() => hover = true),
-      onExit: (_) => setState(() => hover = false),
+      onEnter: (_) {
+        if (!widget.selected) {
+          setState(() => hover = true);
+        }
+      },
+      onExit: (_) {
+        if (!widget.selected) {
+          setState(() => hover = false);
+        }
+      },
       child: GestureDetector(
         onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          margin: const EdgeInsets.symmetric(vertical: 14),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: widget.selected
-                ? widget.accent.withOpacity(0.15)
-                : hover
-                    ? Colors.white.withOpacity(0.08)
-                    : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Icon(
-            widget.icon,
-            size: 28,
-            color: color,
+        child: ScaleTransition(
+          scale: _scaleAnimation,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOutQuad,
+            margin: const EdgeInsets.symmetric(vertical: 14),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: widget.selected
+                  ? widget.accent.withOpacity(0.15)
+                  : hover
+                      ? Colors.white.withOpacity(0.08)
+                      : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              widget.icon,
+              size: 28,
+              color: color,
+            ),
           ),
         ),
       ),
@@ -211,7 +245,7 @@ class _NavIconState extends State<_NavIcon> {
 }
 
 /// ─────────────────────────────────────────────
-/// Content wrapper (for non-calendar tabs)
+/// Content wrapper with smooth animations
 /// ─────────────────────────────────────────────
 class _ContentShell extends StatelessWidget {
   final Widget child;
@@ -231,6 +265,9 @@ class _ContentShell extends StatelessWidget {
           child: child,
         ),
       ),
-    );
+    )
+        .animate()
+        .fadeIn(duration: 400.ms, curve: Curves.easeInOutCubic)
+        .slideX(begin: 0.05, duration: 400.ms, curve: Curves.easeInOutCubic);
   }
 }

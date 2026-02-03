@@ -8,13 +8,11 @@ import '../../data/todo_db.dart';
 class CalendarPage extends StatefulWidget {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
-  final VoidCallback onOpenTodos;
 
   const CalendarPage({
     super.key,
     required this.selectedDate,
     required this.onDateSelected,
-    required this.onOpenTodos,
   });
 
   @override
@@ -23,8 +21,9 @@ class CalendarPage extends StatefulWidget {
 
 class _CalendarPageState extends State<CalendarPage> {
   static const double blur = 24;
-  final TextEditingController addCtrl = TextEditingController();
   List<Map<String, dynamic>> todos = [];
+  Set<String> daysWithTasks = {};
+  late DateTime focusedMonth;
 
   String get dateKey =>
       widget.selectedDate.toIso8601String().split('T')[0];
@@ -32,7 +31,9 @@ class _CalendarPageState extends State<CalendarPage> {
   @override
   void initState() {
     super.initState();
+    focusedMonth = widget.selectedDate;
     loadTodos();
+    loadTasksForMonth(focusedMonth);
   }
 
   @override
@@ -41,6 +42,11 @@ class _CalendarPageState extends State<CalendarPage> {
     if (!isSameDay(oldWidget.selectedDate, widget.selectedDate)) {
       loadTodos();
     }
+    if (oldWidget.selectedDate.year != widget.selectedDate.year ||
+        oldWidget.selectedDate.month != widget.selectedDate.month) {
+      focusedMonth = widget.selectedDate;
+      loadTasksForMonth(focusedMonth);
+    }
   }
 
   Future<void> loadTodos() async {
@@ -48,11 +54,18 @@ class _CalendarPageState extends State<CalendarPage> {
     if (mounted) setState(() => todos = data);
   }
 
-  Future<void> addTodo() async {
-    if (addCtrl.text.trim().isEmpty) return;
-    await TodoDB.instance.addTodo(dateKey, addCtrl.text, '');
-    addCtrl.clear();
-    await loadTodos();
+  String _dateKeyFor(DateTime d) => d.toIso8601String().split('T')[0];
+
+  Future<void> loadTasksForMonth(DateTime month) async {
+    final keys = <String>{};
+    final first = DateTime(month.year, month.month, 1);
+    final last = DateTime(month.year, month.month + 1, 0);
+    for (var d = first; !d.isAfter(last); d = d.add(const Duration(days: 1))) {
+      final k = _dateKeyFor(d);
+      final items = await TodoDB.instance.getTodos(k);
+      if (items.isNotEmpty) keys.add(k);
+    }
+    if (mounted) setState(() => daysWithTasks = keys);
   }
 
   @override
@@ -65,24 +78,30 @@ class _CalendarPageState extends State<CalendarPage> {
         borderRadius: BorderRadius.circular(24),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              children: [
-                TableCalendar(
-                  firstDay: DateTime.utc(2020),
-                  lastDay: DateTime.utc(2035),
-                  focusedDay: widget.selectedDate,
-                  selectedDayPredicate: (d) =>
-                      isSameDay(d, widget.selectedDate),
-                  onDaySelected: (d, _) =>
+          child: Stack(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Column(
+                  children: [
+                    TableCalendar(
+                      firstDay: DateTime.utc(2020),
+                      lastDay: DateTime.utc(2035),
+                      focusedDay: focusedMonth,
+                      onPageChanged: (newFocused) {
+                        setState(() => focusedMonth = newFocused);
+                        loadTasksForMonth(focusedMonth);
+                      },
+                      selectedDayPredicate: (d) =>
+                          isSameDay(d, widget.selectedDate),
+                      onDaySelected: (d, _) =>
                       widget.onDateSelected(d),
                   headerStyle: const HeaderStyle(
-                    titleCentered: true,
+                    titleCentered: false,
                     formatButtonVisible: false,
                   ),
                   calendarStyle: CalendarStyle(
@@ -95,28 +114,12 @@ class _CalendarPageState extends State<CalendarPage> {
                       shape: BoxShape.circle,
                     ),
                   ),
-                ).animate().fadeIn().slideY(begin: -0.1),
+                )
+                    .animate()
+                    .fadeIn(duration: 400.ms, curve: Curves.easeInOutCubic)
+                    .slideY(begin: -0.1, duration: 400.ms, curve: Curves.easeOutCubic),
 
                 const SizedBox(height: 12),
-
-                TextField(
-                  controller: addCtrl,
-                  onSubmitted: (_) => addTodo(),
-                  decoration: InputDecoration(
-                    hintText: 'Add task for this day',
-                    filled: true,
-                    fillColor:
-                        Colors.white.withOpacity(0.08),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
-                    ),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.add),
-                      onPressed: addTodo,
-                    ),
-                  ),
-                ),
 
                 const SizedBox(height: 12),
 
@@ -135,40 +138,413 @@ class _CalendarPageState extends State<CalendarPage> {
                         tagColor = Color(int.parse(parts[1]));
                       }
 
+                      final isDone = (t['done'] as int) == 1;
+
                       return GestureDetector(
-                        onTap: widget.onOpenTodos,
+                        onTap: () {
+                          // Show task details - can be enhanced later
+                        },
                         child: Container(
                           margin: const EdgeInsets.symmetric(vertical: 6),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.05),
+                            color: isDone
+                                ? Colors.white.withOpacity(0.02)
+                                : Colors.white.withOpacity(0.05),
                             borderRadius: BorderRadius.circular(12),
                             border: Border(
                               left: BorderSide(
                                 width: 4,
-                                color: accent,
+                                color: isDone ? accent.withOpacity(0.3) : accent,
                               ),
                             ),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.task_alt, size: 18),
+                              // Checkbox
+                              GestureDetector(
+                                onTap: () async {
+                                  await TodoDB.instance.toggleDone(
+                                    t['id'] as int,
+                                    !isDone,
+                                  );
+                                  await loadTodos();
+                                },
+                                child: Icon(
+                                  isDone ? Icons.check_circle : Icons.circle_outlined,
+                                  size: 20,
+                                  color: isDone ? accent : Colors.white54,
+                                )
+                                    .animate()
+                                    .scale(curve: Curves.easeInOutCubic),
+                              ),
                               const SizedBox(width: 10),
-                              Expanded(child: Text(t['text'])),
+                              // Task text
+                              Expanded(
+                                child: Text(
+                                  t['text'],
+                                  style: TextStyle(
+                                    color: isDone ? Colors.white54 : Colors.white,
+                                    decoration: isDone ? TextDecoration.lineThrough : null,
+                                    decorationColor:
+                                        isDone ? Colors.white54 : null,
+                                  ),
+                                ),
+                              ),
+                              // Tag if exists
                               if (tag.isNotEmpty)
                                 Chip(
-                                  avatar: Icon(Icons.tag, size: 14, color: tagColor),
+                                  avatar: Icon(Icons.tag,
+                                      size: 14, color: tagColor),
                                   label: Text(tag),
                                 ),
+                              const SizedBox(width: 8),
+                              // Delete button
+                              GestureDetector(
+                                onTap: () async {
+                                  await TodoDB.instance.deleteTodo(
+                                    t['id'] as int,
+                                  );
+                                  await loadTodos();
+                                },
+                                child: Icon(
+                                  Icons.delete_outline,
+                                  size: 18,
+                                  color: Colors.redAccent.withOpacity(0.7),
+                                )
+                                    .animate()
+                                    .scale(curve: Curves.easeInOutCubic),
+                              ),
                             ],
                           ),
                         ),
-                      ).animate().fadeIn().slideY(begin: 0.2);
+                      )
+                          .animate()
+                          .fadeIn(delay: Duration(milliseconds: 100 + (i * 50)), duration: 300.ms, curve: Curves.easeInOutCubic)
+                          .slideY(begin: 0.2, delay: Duration(milliseconds: 100 + (i * 50)), duration: 300.ms, curve: Curves.easeOutCubic);
                     },
                   ),
                 ),
               ],
             ),
+          ),
+              // Floating Action Button with Spring Animation
+              Positioned(
+                bottom: 20,
+                right: 20,
+                child: _AnimatedAddButton(
+                  accent: accent,
+                  selectedDate: widget.selectedDate,
+                  onAddTask: (payload) async {
+                    final text = payload['text'] as String? ?? '';
+                    final tag = payload['tag'] as String? ?? '';
+                    if (text.trim().isEmpty) return;
+                    await TodoDB.instance.addTodo(dateKey, text, tag);
+                    await loadTodos();
+                    await loadTasksForMonth(focusedMonth);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Animated Add Button with Spring Animation and Task Dialog
+class _AnimatedAddButton extends StatefulWidget {
+  final Color accent;
+  final DateTime selectedDate;
+  final ValueChanged<Map<String, dynamic>> onAddTask;
+
+  const _AnimatedAddButton({
+    required this.accent,
+    required this.selectedDate,
+    required this.onAddTask,
+  });
+
+  @override
+  State<_AnimatedAddButton> createState() => _AnimatedAddButtonState();
+}
+
+class _AnimatedAddButtonState extends State<_AnimatedAddButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    );
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handlePress() {
+    // Spring press animation - bounce effect
+    _controller.reverse(from: 1.0).then((_) {
+      _controller.forward();
+      // Show add task dialog
+      _showAddTaskDialog();
+    });
+  }
+
+  void _showAddTaskDialog() {
+    final TextEditingController taskCtrl = TextEditingController();
+    final TextEditingController tagCtrl = TextEditingController();
+    Color selectedTagColor = widget.accent;
+    final dateFormatter = widget.selectedDate.toString().split(' ')[0];
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[900],
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Text(
+                  'Add Task',
+                  style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                )
+                    .animate()
+                    .fadeIn(duration: 300.ms, curve: Curves.easeInOutCubic)
+                    .slideX(begin: -0.1, duration: 300.ms, curve: Curves.easeOutCubic),
+
+                const SizedBox(height: 8),
+
+                // Date info
+                Text(
+                  'Selected Date: $dateFormatter',
+                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                        color: Colors.white54,
+                      ),
+                )
+                    .animate()
+                    .fadeIn(delay: 50.ms, duration: 300.ms, curve: Curves.easeInOutCubic)
+                    .slideX(begin: -0.1, delay: 50.ms, duration: 300.ms, curve: Curves.easeOutCubic),
+
+                const SizedBox(height: 20),
+
+                // Input field
+                TextField(
+                  controller: taskCtrl,
+                  autofocus: true,
+                  maxLines: 3,
+                  minLines: 1,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'What do you want to do?',
+                    hintStyle: TextStyle(color: Colors.white38),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.08),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withOpacity(0.1),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: widget.accent,
+                        width: 2,
+                      ),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 100.ms, duration: 300.ms, curve: Curves.easeInOutCubic)
+                    .slideY(begin: 0.1, delay: 100.ms, duration: 300.ms, curve: Curves.easeOutCubic),
+
+                const SizedBox(height: 12),
+
+                // Tag input + color picker
+                TextField(
+                  controller: tagCtrl,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Tag (optional)',
+                    hintStyle: TextStyle(color: Colors.white38),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.04),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    for (final c in [widget.accent, Colors.blue, Colors.green, Colors.orange, Colors.purple, Colors.red])
+                      GestureDetector(
+                        onTap: () => setState(() => selectedTagColor = c),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            color: c,
+                            shape: BoxShape.circle,
+                            border: selectedTagColor == c ? Border.all(color: Colors.white, width: 2) : null,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(ctx),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.1),
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                          .animate()
+                          .fadeIn(delay: 150.ms, duration: 300.ms, curve: Curves.easeInOutCubic)
+                          .slideY(begin: 0.1, delay: 150.ms, duration: 300.ms, curve: Curves.easeOutCubic),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () {
+                          final text = taskCtrl.text.trim();
+                          final tagName = tagCtrl.text.trim();
+                          final tagString = tagName.isNotEmpty ? '$tagName|${selectedTagColor.value}' : '';
+                          if (text.isNotEmpty) {
+                            widget.onAddTask({'text': text, 'tag': tagString});
+                            Navigator.pop(ctx);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: widget.accent,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Add Task',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                          .animate()
+                          .fadeIn(delay: 150.ms, duration: 300.ms, curve: Curves.easeInOutCubic)
+                          .slideY(begin: 0.1, delay: 150.ms, duration: 300.ms, curve: Curves.easeOutCubic),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).then((_) {
+      taskCtrl.dispose();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: MouseRegion(
+        onEnter: (_) {
+          if (_controller.isCompleted) {
+            _controller.forward(from: 0.9);
+          }
+        },
+        child: GestureDetector(
+          onTap: _handlePress,
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              return Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: widget.accent,
+                  boxShadow: [
+                    BoxShadow(
+                      color: widget.accent.withOpacity(0.4 + (_controller.value * 0.2)),
+                      blurRadius: 12 + (_controller.value * 4),
+                      spreadRadius: 2 + (_controller.value * 2),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: EdgeInsets.all(14 + (_controller.value * 2)),
+                  child: Icon(
+                    Icons.add,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
