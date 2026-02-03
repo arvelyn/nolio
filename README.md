@@ -13,7 +13,6 @@ Built with **Flutter** and designed primarily for **Linux desktop**, Nolio lets 
 - 🏷️ Tags with color support  
 - ⏱️ Built-in timer  
 - 🎨 Accent color customization  
-- 🧊 Glass-style UI with smooth animations  
 - 🐧 Native Linux desktop application  
 - ⌨️ Keyboard-friendly workflow  
 
