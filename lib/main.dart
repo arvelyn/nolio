@@ -158,40 +158,36 @@ class _TopBar extends StatelessWidget {
     final timeText =
         '${_two(now.hour)}:${_two(now.minute)}:${_two(now.second)}';
 
-    final bar = Container(
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Row(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final bar = Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
+      child: SizedBox(
+        height: 44,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 title,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.6,
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Text(
                 timeText,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: accent,
                   fontWeight: FontWeight.w600,
-                  letterSpacing: 0.4,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
           ),
-          const Spacer(),
-          Icon(Icons.circle, size: 10, color: accent.withValues(alpha: 0.85)),
-        ],
+        ),
       ),
     ).animate().fadeIn(duration: 220.ms).slideY(begin: -0.06, duration: 220.ms);
 
