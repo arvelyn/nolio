@@ -99,9 +99,29 @@ class _TimelinePageState extends State<TimelinePage> {
     return parts[0];
   }
 
+  List<_WeekTodoItem> _flattenedWeekTodos() {
+    final items = <_WeekTodoItem>[];
+    for (final day in weekTasks) {
+      for (final todo in day.todos) {
+        items.add(_WeekTodoItem(date: day.date, todo: todo));
+      }
+    }
+
+    items.sort((a, b) {
+      final dayCompare = a.date.compareTo(b.date);
+      if (dayCompare != 0) return dayCompare;
+      final aPos = a.todo['position'] as int? ?? 0;
+      final bPos = b.todo['position'] as int? ?? 0;
+      return aPos.compareTo(bPos);
+    });
+
+    return items;
+  }
+
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
+    final weekItems = _flattenedWeekTodos();
     final totalTasks = weekTasks.fold<int>(0, (sum, d) => sum + d.todos.length);
     final doneTasks = weekTasks.fold<int>(
       0,
@@ -182,135 +202,110 @@ class _TimelinePageState extends State<TimelinePage> {
           Expanded(
             child: loading
                 ? Center(child: CircularProgressIndicator(color: accent))
+                : weekItems.isEmpty
+                ? Center(
+                    child: Text(
+                      'No tasks this week',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleMedium?.copyWith(color: Colors.white60),
+                    ),
+                  )
                 : ListView.builder(
-                    itemCount: weekTasks.length,
+                    itemCount: weekItems.length,
                     itemBuilder: (context, index) {
-                      final day = weekTasks[index];
+                      final item = weekItems[index];
+                      final todo = item.todo;
+                      final date = item.date;
                       final isToday =
-                          _dateKey(day.date) == _dateKey(DateTime.now());
+                          _dateKey(date) == _dateKey(DateTime.now());
+                      final isDone = (todo['done'] as int? ?? 0) == 1;
+                      final rawTag = todo['tag']?.toString() ?? '';
+                      final tag = _tagLabel(rawTag);
+                      final tagColor = _tagColor(rawTag);
 
                       return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
+                            margin: const EdgeInsets.only(bottom: 10),
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: Colors.white.withValues(alpha: 0.05),
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: isToday
-                                    ? accent.withValues(alpha: 0.45)
-                                    : Colors.white.withValues(alpha: 0.08),
-                                width: isToday ? 1.4 : 1.0,
+                              border: Border(
+                                left: BorderSide(
+                                  width: 3,
+                                  color: isDone
+                                      ? accent.withValues(alpha: 0.25)
+                                      : accent,
+                                ),
                               ),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            child: Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      '${_weekdayLabel(day.date)} ${day.date.day}',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
-                                            color: isToday
-                                                ? accent
-                                                : Colors.white,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                    ),
-                                    const Spacer(),
-                                    Text(
-                                      '${day.todos.length} task${day.todos.length == 1 ? '' : 's'}',
-                                      style: const TextStyle(
-                                        color: Colors.white54,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                if (day.todos.isEmpty)
-                                  Text(
-                                    'No tasks',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.45,
-                                      ),
-                                    ),
+                                GestureDetector(
+                                  onTap: () =>
+                                      _toggleDone(todo['id'] as int, !isDone),
+                                  child: Icon(
+                                    isDone
+                                        ? Icons.check_circle
+                                        : Icons.circle_outlined,
+                                    size: 19,
+                                    color: isDone ? accent : Colors.white54,
                                   ),
-                                if (day.todos.isNotEmpty)
-                                  ...day.todos.map((todo) {
-                                    final isDone =
-                                        (todo['done'] as int? ?? 0) == 1;
-                                    final rawTag =
-                                        todo['tag']?.toString() ?? '';
-                                    final tag = _tagLabel(rawTag);
-                                    final tagColor = _tagColor(rawTag);
-
-                                    return Container(
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 10,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: isDone
-                                            ? Colors.white.withValues(
-                                                alpha: 0.02,
-                                              )
-                                            : Colors.white.withValues(
-                                                alpha: 0.04,
-                                              ),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border(
-                                          left: BorderSide(
-                                            width: 3,
-                                            color: isDone
-                                                ? accent.withValues(alpha: 0.25)
-                                                : accent,
-                                          ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        todo['text']?.toString() ?? '',
+                                        style: TextStyle(
+                                          color: isDone
+                                              ? Colors.white54
+                                              : Colors.white,
+                                          decoration: isDone
+                                              ? TextDecoration.lineThrough
+                                              : null,
                                         ),
                                       ),
-                                      child: Row(
+                                      const SizedBox(height: 6),
+                                      Row(
                                         children: [
-                                          GestureDetector(
-                                            onTap: () => _toggleDone(
-                                              todo['id'] as int,
-                                              !isDone,
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 3,
                                             ),
-                                            child: Icon(
-                                              isDone
-                                                  ? Icons.check_circle
-                                                  : Icons.circle_outlined,
-                                              size: 19,
-                                              color: isDone
-                                                  ? accent
-                                                  : Colors.white54,
+                                            decoration: BoxDecoration(
+                                              color: isToday
+                                                  ? accent.withValues(
+                                                      alpha: 0.15,
+                                                    )
+                                                  : Colors.white.withValues(
+                                                      alpha: 0.06,
+                                                    ),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
                                             ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
                                             child: Text(
-                                              todo['text']?.toString() ?? '',
+                                              '${_weekdayLabel(date)} ${date.day}',
                                               style: TextStyle(
-                                                color: isDone
-                                                    ? Colors.white54
-                                                    : Colors.white,
-                                                decoration: isDone
-                                                    ? TextDecoration.lineThrough
-                                                    : null,
+                                                color: isToday
+                                                    ? accent
+                                                    : Colors.white70,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
                                               ),
                                             ),
                                           ),
-                                          if (tag.isNotEmpty)
+                                          if (tag.isNotEmpty) ...[
+                                            const SizedBox(width: 8),
                                             Container(
-                                              margin: const EdgeInsets.only(
-                                                left: 8,
-                                              ),
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                     horizontal: 8,
-                                                    vertical: 4,
+                                                    vertical: 3,
                                                   ),
                                               decoration: BoxDecoration(
                                                 color: tagColor.withValues(
@@ -328,22 +323,24 @@ class _TimelinePageState extends State<TimelinePage> {
                                                 ),
                                               ),
                                             ),
+                                          ],
                                         ],
                                       ),
-                                    );
-                                  }),
+                                    ],
+                                  ),
+                                ),
                               ],
                             ),
                           )
                           .animate()
                           .fadeIn(
-                            delay: Duration(milliseconds: 80 + (index * 60)),
+                            delay: Duration(milliseconds: 80 + (index * 40)),
                             duration: 320.ms,
                             curve: Curves.easeInOutCubic,
                           )
                           .slideY(
                             begin: 0.18,
-                            delay: Duration(milliseconds: 80 + (index * 60)),
+                            delay: Duration(milliseconds: 80 + (index * 40)),
                             duration: 320.ms,
                             curve: Curves.easeOutCubic,
                           );
@@ -361,4 +358,11 @@ class _DayTasks {
   final List<Map<String, dynamic>> todos;
 
   const _DayTasks({required this.date, required this.todos});
+}
+
+class _WeekTodoItem {
+  final DateTime date;
+  final Map<String, dynamic> todo;
+
+  const _WeekTodoItem({required this.date, required this.todo});
 }
