@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -14,11 +12,11 @@ class TodoDB {
     databaseFactory = databaseFactoryFfi;
 
     final dir = await getApplicationSupportDirectory();
-    final path = join(dir.path, 'nolio.db');
+    final path = '${dir.path}/nolio.db';
 
     db = await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE todos (
@@ -30,11 +28,31 @@ class TodoDB {
             done INTEGER NOT NULL DEFAULT 0
           )
         ''');
+        await db.execute('''
+          CREATE TABLE timer_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            type TEXT NOT NULL,
+            seconds INTEGER NOT NULL,
+            created_at TEXT NOT NULL
+          )
+        ''');
       },
       onUpgrade: (db, old, _) async {
         if (old < 2) {
           await db.execute('ALTER TABLE todos ADD COLUMN tag TEXT');
           await db.execute('ALTER TABLE todos ADD COLUMN position INTEGER');
+        }
+        if (old < 3) {
+          await db.execute('''
+            CREATE TABLE timer_logs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              date TEXT NOT NULL,
+              type TEXT NOT NULL,
+              seconds INTEGER NOT NULL,
+              created_at TEXT NOT NULL
+            )
+          ''');
         }
       },
     );
@@ -55,10 +73,9 @@ class TodoDB {
       [date],
     );
 
-    final maxPos =
-        res.isNotEmpty && res.first['maxPos'] != null
-            ? res.first['maxPos'] as int
-            : 0;
+    final maxPos = res.isNotEmpty && res.first['maxPos'] != null
+        ? res.first['maxPos'] as int
+        : 0;
 
     await db.insert('todos', {
       'date': date,
@@ -88,10 +105,61 @@ class TodoDB {
   }
 
   Future<void> deleteTodo(int id) async {
-    await db.delete(
-      'todos',
-      where: 'id = ?',
-      whereArgs: [id],
+    await db.delete('todos', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> addTimerLog({
+    required String date,
+    required String type,
+    required int seconds,
+  }) async {
+    await db.insert('timer_logs', {
+      'date': date,
+      'type': type,
+      'seconds': seconds,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<Map<String, int>> getTimerTotalsForDate(String date) async {
+    final rows = await db.rawQuery(
+      '''
+      SELECT type, COALESCE(SUM(seconds), 0) as total
+      FROM timer_logs
+      WHERE date = ?
+      GROUP BY type
+      ''',
+      [date],
+    );
+
+    int work = 0;
+    int brk = 0;
+
+    for (final row in rows) {
+      final type = row['type']?.toString() ?? '';
+      final value = (row['total'] as num?)?.toInt() ?? 0;
+      if (type == 'work') work = value;
+      if (type == 'break') brk = value;
+    }
+
+    return {'work': work, 'break': brk, 'total': work + brk};
+  }
+
+  Future<List<Map<String, dynamic>>> getTimerDailyStats({
+    int limit = 14,
+  }) async {
+    return db.rawQuery(
+      '''
+      SELECT
+        date,
+        COALESCE(SUM(CASE WHEN type = 'work' THEN seconds ELSE 0 END), 0) as work_seconds,
+        COALESCE(SUM(CASE WHEN type = 'break' THEN seconds ELSE 0 END), 0) as break_seconds
+      FROM timer_logs
+      GROUP BY date
+      ORDER BY date DESC
+      LIMIT ?
+      ''',
+      [limit],
     );
   }
 }
