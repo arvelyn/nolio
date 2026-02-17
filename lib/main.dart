@@ -344,7 +344,7 @@ class _ContentShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(12, 12, 18, 18),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(24),
             child: Container(
