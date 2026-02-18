@@ -245,15 +245,24 @@ class _TimerPageState extends State<TimerPage> {
         ? 0.0
         : (workSeconds / totalSeconds) * 100;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 10, 24, 18),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(22),
+              gradient: LinearGradient(
+                colors: [
+                  Colors.black.withValues(alpha: 0.24),
+                  Colors.black.withValues(alpha: 0.08),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
             ),
             child: Column(
               children: [
@@ -274,27 +283,44 @@ class _TimerPageState extends State<TimerPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 20),
                 Text(
                   _formatClock(_engine.remainingSeconds),
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 68,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 96,
+                    fontWeight: FontWeight.w800,
                     color: accent,
-                    letterSpacing: 1,
+                    letterSpacing: 1.2,
+                    height: 0.95,
                   ),
-                ).animate().fadeIn().scale(),
-                const SizedBox(height: 8),
+                ).animate().fadeIn(duration: 260.ms).scale(),
+                const SizedBox(height: 10),
                 Text(
                   _modeLabel(_engine.mode),
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.72),
+                    letterSpacing: 0.4,
+                  ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 18),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    SizedBox(
+                      width: 104,
+                      child: TextField(
+                        controller: _workCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Minutes',
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
                     IconButton(
-                      iconSize: 36,
+                      iconSize: 40,
                       icon: Icon(
                         _engine.running ? Icons.pause : Icons.play_arrow,
                       ),
@@ -302,37 +328,17 @@ class _TimerPageState extends State<TimerPage> {
                           ? _engine.pause
                           : _engine.start,
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 4),
                     IconButton(
-                      iconSize: 36,
+                      iconSize: 38,
                       icon: const Icon(Icons.refresh),
                       onPressed: _engine.resetCurrent,
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                SwitchListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Auto cycle: Session -> Break -> Session'),
-                  value: _engine.autoCycle,
-                  onChanged: _engine.setAutoCycle,
-                ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _workCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Work min',
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
                     Expanded(
                       child: TextField(
                         controller: _breakCtrl,
@@ -356,126 +362,131 @@ class _TimerPageState extends State<TimerPage> {
                     ),
                   ],
                 ),
+                SwitchListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.only(top: 2),
+                  title: const Text('Auto cycle: Session -> Break -> Session'),
+                  value: _engine.autoCycle,
+                  onChanged: _engine.setAutoCycle,
+                ),
               ],
             ),
           ).animate().fadeIn(duration: 250.ms).slideY(begin: 0.08),
           const SizedBox(height: 14),
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Today Stats',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Today Stats',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StatTile(
+                        label: 'Worked/Studied',
+                        value: _formatDuration(workSeconds),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _StatTile(
-                          label: 'Worked/Studied',
-                          value: _formatDuration(workSeconds),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _StatTile(
+                        label: 'Break',
+                        value: _formatDuration(breakSeconds),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _StatTile(
+                        label: 'Focus %',
+                        value: '${workPct.toStringAsFixed(1)}%',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Date-wise Entries',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(color: Colors.white70),
+                ),
+                const SizedBox(height: 8),
+                if (_dailyStats.isEmpty)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Text(
+                        'No timer entries yet',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.5),
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _StatTile(
-                          label: 'Break',
-                          value: _formatDuration(breakSeconds),
+                    ),
+                  )
+                else
+                  ListView.builder(
+                    itemCount: _dailyStats.length,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemBuilder: (context, i) {
+                      final row = _dailyStats[i];
+                      final date = row['date']?.toString() ?? '';
+                      final ws = (row['work_seconds'] as num?)?.toInt() ?? 0;
+                      final bs = (row['break_seconds'] as num?)?.toInt() ?? 0;
+                      final total = ws + bs;
+                      final pct = total == 0 ? 0.0 : (ws / total) * 100;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _StatTile(
-                          label: 'Focus %',
-                          value: '${workPct.toStringAsFixed(1)}%',
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.06),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Date-wise Entries',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.titleSmall?.copyWith(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: _dailyStats.isEmpty
-                        ? Center(
-                            child: Text(
-                              'No timer entries yet',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.5),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 64,
+                              child: Text(
+                                _displayDate(date),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
-                          )
-                        : ListView.builder(
-                            itemCount: _dailyStats.length,
-                            itemBuilder: (context, i) {
-                              final row = _dailyStats[i];
-                              final date = row['date']?.toString() ?? '';
-                              final ws =
-                                  (row['work_seconds'] as num?)?.toInt() ?? 0;
-                              final bs =
-                                  (row['break_seconds'] as num?)?.toInt() ?? 0;
-                              final total = ws + bs;
-                              final pct = total == 0 ? 0.0 : (ws / total) * 100;
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.04),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.06),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 64,
-                                      child: Text(
-                                        _displayDate(date),
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'Work ${_formatDuration(ws)} • Break ${_formatDuration(bs)}',
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                        ),
-                                      ),
-                                    ),
-                                    Text('${pct.toStringAsFixed(0)}%'),
-                                  ],
-                                ),
-                              ).animate().fadeIn(
-                                delay: Duration(milliseconds: 60 * i),
-                                duration: 220.ms,
-                              );
-                            },
-                          ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Work ${_formatDuration(ws)} • Break ${_formatDuration(bs)}',
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                            Text('${pct.toStringAsFixed(0)}%'),
+                          ],
+                        ),
+                      ).animate().fadeIn(
+                        delay: Duration(milliseconds: 60 * i),
+                        duration: 220.ms,
+                      );
+                    },
                   ),
-                ],
-              ),
+              ],
             ),
           ),
         ],
