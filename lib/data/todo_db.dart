@@ -29,7 +29,7 @@ class TodoDB {
           )
         ''');
         await db.execute('''
-          CREATE TABLE timer_logs (
+          CREATE TABLE IF NOT EXISTS timer_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL,
             type TEXT NOT NULL,
@@ -45,7 +45,7 @@ class TodoDB {
         }
         if (old < 3) {
           await db.execute('''
-            CREATE TABLE timer_logs (
+            CREATE TABLE IF NOT EXISTS timer_logs (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               date TEXT NOT NULL,
               type TEXT NOT NULL,
