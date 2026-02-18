@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -6,6 +7,151 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../data/todo_db.dart';
 
 enum _TimerMode { work, breakTime }
+
+class _TimerEngine extends ChangeNotifier {
+  _TimerEngine._();
+  static final _TimerEngine instance = _TimerEngine._();
+
+  Timer? _ticker;
+  _TimerMode mode = _TimerMode.work;
+  bool running = false;
+  bool autoCycle = true;
+  int workMinutes = 25;
+  int breakMinutes = 5;
+  int remainingSeconds = 25 * 60;
+  int _activeSessionSeconds = 25 * 60;
+  int statsRevision = 0;
+  bool _transitioning = false;
+
+  int _durationFor(_TimerMode m) =>
+      (m == _TimerMode.work ? workMinutes : breakMinutes) * 60;
+  String _dateKey(DateTime d) => d.toIso8601String().split('T')[0];
+  void _spawnTicker() {
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) async {
+      if (_transitioning || !running) return;
+      if (remainingSeconds > 0) {
+        remainingSeconds -= 1;
+        notifyListeners();
+      }
+      if (remainingSeconds == 0) {
+        await _handleSessionFinished();
+      }
+    });
+  }
+
+  void start() {
+    if (running) return;
+    running = true;
+    notifyListeners();
+    _spawnTicker();
+  }
+
+  void pause() {
+    running = false;
+    _ticker?.cancel();
+    notifyListeners();
+  }
+
+  void resetCurrent() {
+    running = false;
+    _ticker?.cancel();
+    remainingSeconds = _durationFor(mode);
+    _activeSessionSeconds = remainingSeconds;
+    notifyListeners();
+  }
+
+  void switchMode(_TimerMode m) {
+    running = false;
+    _ticker?.cancel();
+    mode = m;
+    remainingSeconds = _durationFor(m);
+    _activeSessionSeconds = remainingSeconds;
+    notifyListeners();
+  }
+
+  void setAutoCycle(bool value) {
+    autoCycle = value;
+    notifyListeners();
+  }
+
+  void applySetup({required int work, required int brk}) {
+    workMinutes = work <= 0 ? 25 : work;
+    breakMinutes = brk <= 0 ? 5 : brk;
+    resetCurrent();
+  }
+
+  Future<void> _sendSystemNotification({
+    required String title,
+    required String body,
+  }) async {
+    try {
+      if (Platform.isLinux) {
+        await Process.run('notify-send', [title, body]);
+        return;
+      }
+      if (Platform.isMacOS) {
+        await Process.run('osascript', [
+          '-e',
+          'display notification "$body" with title "$title"',
+        ]);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _handleSessionFinished() async {
+    if (_transitioning) return;
+    _transitioning = true;
+    _ticker?.cancel();
+
+    final finishedMode = mode;
+    final finishedSeconds = _activeSessionSeconds;
+
+    await TodoDB.instance.addTimerLog(
+      date: _dateKey(DateTime.now()),
+      type: finishedMode == _TimerMode.work ? 'work' : 'break',
+      seconds: finishedSeconds,
+    );
+    statsRevision += 1;
+
+    if (finishedMode == _TimerMode.work) {
+      unawaited(
+        _sendSystemNotification(
+          title: 'Work session complete',
+          body: autoCycle ? 'Break started.' : 'Start your break when ready.',
+        ),
+      );
+    } else {
+      unawaited(
+        _sendSystemNotification(
+          title: 'Break complete',
+          body: autoCycle
+              ? 'Work session started.'
+              : 'Start your next session.',
+        ),
+      );
+    }
+
+    if (autoCycle) {
+      mode = finishedMode == _TimerMode.work
+          ? _TimerMode.breakTime
+          : _TimerMode.work;
+      remainingSeconds = _durationFor(mode);
+      _activeSessionSeconds = remainingSeconds;
+      running = true;
+      _transitioning = false;
+      notifyListeners();
+      _spawnTicker();
+      return;
+    }
+
+    running = false;
+    remainingSeconds = _durationFor(finishedMode);
+    _activeSessionSeconds = remainingSeconds;
+    _transitioning = false;
+    notifyListeners();
+  }
+}
 
 class TimerPage extends StatefulWidget {
   const TimerPage({super.key});
@@ -15,17 +161,10 @@ class TimerPage extends StatefulWidget {
 }
 
 class _TimerPageState extends State<TimerPage> {
-  final TextEditingController _workCtrl = TextEditingController(text: '25');
-  final TextEditingController _breakCtrl = TextEditingController(text: '5');
-
-  Timer? _ticker;
-  _TimerMode _mode = _TimerMode.work;
-  bool _running = false;
-  bool _autoCycle = true;
-  bool _isTransitioning = false;
-
-  int _remainingSeconds = 25 * 60;
-  int _activeSessionSeconds = 25 * 60;
+  final _engine = _TimerEngine.instance;
+  late final TextEditingController _workCtrl;
+  late final TextEditingController _breakCtrl;
+  int _lastStatsRevision = -1;
 
   Map<String, int> _todayTotals = {'work': 0, 'break': 0, 'total': 0};
   List<Map<String, dynamic>> _dailyStats = [];
@@ -33,34 +172,33 @@ class _TimerPageState extends State<TimerPage> {
   @override
   void initState() {
     super.initState();
-    _remainingSeconds = _durationFor(_mode);
-    _activeSessionSeconds = _remainingSeconds;
+    _workCtrl = TextEditingController(text: _engine.workMinutes.toString());
+    _breakCtrl = TextEditingController(text: _engine.breakMinutes.toString());
+    _engine.addListener(_onEngineTick);
     _loadStats();
   }
 
   @override
   void dispose() {
-    _ticker?.cancel();
+    _engine.removeListener(_onEngineTick);
     _workCtrl.dispose();
     _breakCtrl.dispose();
     super.dispose();
   }
 
-  String _dateKey(DateTime d) => d.toIso8601String().split('T')[0];
+  void _onEngineTick() {
+    if (!mounted) return;
+    if (_engine.statsRevision != _lastStatsRevision) {
+      _lastStatsRevision = _engine.statsRevision;
+      unawaited(_loadStats());
+    }
+    setState(() {});
+  }
 
   int _safeMinutes(TextEditingController ctrl, int fallback) {
     final parsed = int.tryParse(ctrl.text.trim());
     if (parsed == null || parsed <= 0) return fallback;
     return parsed;
-  }
-
-  int _durationFor(_TimerMode mode) {
-    if (mode == _TimerMode.work) return _safeMinutes(_workCtrl, 25) * 60;
-    return _safeMinutes(_breakCtrl, 5) * 60;
-  }
-
-  String _modeLabel(_TimerMode mode) {
-    return mode == _TimerMode.work ? 'Work/Study' : 'Break';
   }
 
   String _formatClock(int seconds) {
@@ -83,8 +221,11 @@ class _TimerPageState extends State<TimerPage> {
     return '${parts[1]}/${parts[2]}';
   }
 
+  String _modeLabel(_TimerMode mode) =>
+      mode == _TimerMode.work ? 'Work/Study' : 'Break';
+
   Future<void> _loadStats() async {
-    final today = _dateKey(DateTime.now());
+    final today = DateTime.now().toIso8601String().split('T')[0];
     final totals = await TodoDB.instance.getTimerTotalsForDate(today);
     final daily = await TodoDB.instance.getTimerDailyStats(limit: 14);
     if (!mounted) return;
@@ -92,105 +233,6 @@ class _TimerPageState extends State<TimerPage> {
       _todayTotals = totals;
       _dailyStats = daily;
     });
-  }
-
-  void _start() {
-    if (_running) return;
-    setState(() => _running = true);
-    _ticker?.cancel();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) async {
-      if (!mounted || _isTransitioning) return;
-      if (_remainingSeconds > 0) {
-        setState(() => _remainingSeconds -= 1);
-      }
-      if (_remainingSeconds == 0) {
-        await _onSessionFinished();
-      }
-    });
-  }
-
-  void _pause() {
-    _ticker?.cancel();
-    setState(() => _running = false);
-  }
-
-  void _resetCurrentMode() {
-    _pause();
-    setState(() {
-      _remainingSeconds = _durationFor(_mode);
-      _activeSessionSeconds = _remainingSeconds;
-    });
-  }
-
-  void _applySetup() {
-    _resetCurrentMode();
-  }
-
-  void _switchMode(_TimerMode mode) {
-    _pause();
-    setState(() {
-      _mode = mode;
-      _remainingSeconds = _durationFor(mode);
-      _activeSessionSeconds = _remainingSeconds;
-    });
-  }
-
-  Future<void> _onSessionFinished() async {
-    if (_isTransitioning) return;
-    _isTransitioning = true;
-    _ticker?.cancel();
-
-    final finishedMode = _mode;
-    final finishedSeconds = _activeSessionSeconds;
-
-    await TodoDB.instance.addTimerLog(
-      date: _dateKey(DateTime.now()),
-      type: finishedMode == _TimerMode.work ? 'work' : 'break',
-      seconds: finishedSeconds,
-    );
-
-    await _loadStats();
-
-    if (mounted) {
-      final nextMode = finishedMode == _TimerMode.work
-          ? _TimerMode.breakTime
-          : _TimerMode.work;
-      final note = _autoCycle
-          ? '${_modeLabel(finishedMode)} finished. ${_modeLabel(nextMode)} started.'
-          : '${_modeLabel(finishedMode)} finished.';
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text(note), duration: const Duration(seconds: 3)),
-        );
-    }
-
-    if (!mounted) {
-      _isTransitioning = false;
-      return;
-    }
-
-    if (_autoCycle) {
-      final next = finishedMode == _TimerMode.work
-          ? _TimerMode.breakTime
-          : _TimerMode.work;
-      setState(() {
-        _mode = next;
-        _remainingSeconds = _durationFor(next);
-        _activeSessionSeconds = _remainingSeconds;
-        _running = true;
-      });
-      _isTransitioning = false;
-      _start();
-      return;
-    }
-
-    setState(() {
-      _running = false;
-      _remainingSeconds = _durationFor(finishedMode);
-      _activeSessionSeconds = _remainingSeconds;
-    });
-    _isTransitioning = false;
   }
 
   @override
@@ -220,20 +262,21 @@ class _TimerPageState extends State<TimerPage> {
                   children: [
                     ChoiceChip(
                       label: const Text('Work/Study'),
-                      selected: _mode == _TimerMode.work,
-                      onSelected: (_) => _switchMode(_TimerMode.work),
+                      selected: _engine.mode == _TimerMode.work,
+                      onSelected: (_) => _engine.switchMode(_TimerMode.work),
                     ),
                     const SizedBox(width: 10),
                     ChoiceChip(
                       label: const Text('Break'),
-                      selected: _mode == _TimerMode.breakTime,
-                      onSelected: (_) => _switchMode(_TimerMode.breakTime),
+                      selected: _engine.mode == _TimerMode.breakTime,
+                      onSelected: (_) =>
+                          _engine.switchMode(_TimerMode.breakTime),
                     ),
                   ],
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  _formatClock(_remainingSeconds),
+                  _formatClock(_engine.remainingSeconds),
                   style: TextStyle(
                     fontSize: 68,
                     fontWeight: FontWeight.bold,
@@ -243,7 +286,7 @@ class _TimerPageState extends State<TimerPage> {
                 ).animate().fadeIn().scale(),
                 const SizedBox(height: 8),
                 Text(
-                  _modeLabel(_mode),
+                  _modeLabel(_engine.mode),
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
                 ),
                 const SizedBox(height: 14),
@@ -252,14 +295,18 @@ class _TimerPageState extends State<TimerPage> {
                   children: [
                     IconButton(
                       iconSize: 36,
-                      icon: Icon(_running ? Icons.pause : Icons.play_arrow),
-                      onPressed: _running ? _pause : _start,
+                      icon: Icon(
+                        _engine.running ? Icons.pause : Icons.play_arrow,
+                      ),
+                      onPressed: _engine.running
+                          ? _engine.pause
+                          : _engine.start,
                     ),
                     const SizedBox(width: 6),
                     IconButton(
                       iconSize: 36,
                       icon: const Icon(Icons.refresh),
-                      onPressed: _resetCurrentMode,
+                      onPressed: _engine.resetCurrent,
                     ),
                   ],
                 ),
@@ -268,8 +315,8 @@ class _TimerPageState extends State<TimerPage> {
                   dense: true,
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Auto cycle: Session -> Break -> Session'),
-                  value: _autoCycle,
-                  onChanged: (v) => setState(() => _autoCycle = v),
+                  value: _engine.autoCycle,
+                  onChanged: _engine.setAutoCycle,
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -299,7 +346,12 @@ class _TimerPageState extends State<TimerPage> {
                     ),
                     const SizedBox(width: 10),
                     FilledButton(
-                      onPressed: _applySetup,
+                      onPressed: () {
+                        _engine.applySetup(
+                          work: _safeMinutes(_workCtrl, 25),
+                          brk: _safeMinutes(_breakCtrl, 5),
+                        );
+                      },
                       child: const Text('Set'),
                     ),
                   ],
