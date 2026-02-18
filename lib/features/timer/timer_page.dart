@@ -252,10 +252,8 @@ class _TimerPageState extends State<TimerPage> {
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 18),
           child: Column(
             children: [
-              ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 20,
-                ),
+              SizedBox(
+                height: (constraints.maxHeight - 20).clamp(480.0, 1400.0),
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
