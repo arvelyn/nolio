@@ -17,7 +17,6 @@
 
 * 📅 Calendar-centric task management
 * 🎨 Clean, minimal UI with consistent spacing
-* 🌗 Works well with light and dark themes
 * ⌨️ Keyboard & mouse friendly
 * 🐧 Native Linux desktop app (Wayland & X11)
 
