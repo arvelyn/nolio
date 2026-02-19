@@ -4,13 +4,13 @@
 
 > Designed to stay out of your way while helping you plan your day.
 
-[![AUR](https://img.shields.io/aur/version/nolio?label=AUR%20(nolio)&logo=archlinux&style=flat-square)](https://aur.archlinux.org/packages/nolio)
-[![AUR-bin](https://img.shields.io/aur/version/nolio-bin?label=AUR%20(nolio-bin)&logo=archlinux&style=flat-square)](https://aur.archlinux.org/packages/nolio-bin)
-[![GitHub release](https://img.shields.io/github/v/release/Grey-007/nolio?include_prereleases&label=release&style=flat-square)](https://github.com/Grey-007/nolio/releases)
-[![License](https://img.shields.io/github/license/Grey-007/nolio?style=flat-square)](LICENSE)
-[![Flutter](https://img.shields.io/badge/Flutter-3.x-blue?logo=flutter&style=flat-square)](https://flutter.dev)
-[![Platform](https://img.shields.io/badge/platform-Linux--only-blue?logo=linux&style=flat-square)](https://www.kernel.org/)
-[![Display](https://img.shields.io/badge/display-Wayland%20%7C%20X11-success?style=flat-square)](https://wayland.freedesktop.org/)
+[![AUR](https://img.shields.io/aur/version/nolio?label=AUR%20(nolio)&logo=archlinux&style=for-the-badge)](https://aur.archlinux.org/packages/nolio)
+[![AUR-bin](https://img.shields.io/aur/version/nolio-bin?label=AUR%20(nolio-bin)&logo=archlinux&style=for-the-badge)](https://aur.archlinux.org/packages/nolio-bin)
+[![GitHub release](https://img.shields.io/github/v/release/Grey-007/nolio?include_prereleases&label=release&style=for-the-badge)](https://github.com/Grey-007/nolio/releases)
+[![License](https://img.shields.io/github/license/Grey-007/nolio?style=for-the-badge)](LICENSE)
+[![Flutter](https://img.shields.io/badge/Flutter-3.x-blue?logo=flutter&style=for-the-badge)](https://flutter.dev)
+[![Platform](https://img.shields.io/badge/platform-Linux--only-blue?logo=linux&style=for-the-badge)](https://www.kernel.org/)
+[![Display](https://img.shields.io/badge/display-Wayland%20%7C%20X11-success?style=for-the-badge)](https://wayland.freedesktop.org/)
 
 
 ## ✨ Features
