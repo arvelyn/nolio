@@ -22,16 +22,22 @@
 * 🐧 Native Linux desktop app (Wayland & X11)
 
 ---
+## v0.4.0 
 
-## 🆕 What’s New in v0.2.0
+### ✨ Improvements
 
-* Major **UI/UX redesign**
-* Improved layout, spacing, and visual hierarchy
+* Timer accuracy and responsiveness significantly improved
+* Added **timer stats card** for quick session insights
+* Refined layout, spacing, and visual hierarchy
 * Smoother animations and interactions
-* More consistent navigation flow
-* Improved stability and window behavior
+* Weekly view *(introduced in v0.3.0)* now stabilized
 
-> The interface may feel different on first launch — this is intentional.
+### 🪟 Behavior & Stability
+
+* Better window handling
+* General performance and reliability improvements
+
+> UI may look different on first launch — this is intentional.
 
 ---
 
