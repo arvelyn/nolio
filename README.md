@@ -41,6 +41,17 @@
 
 ---
 
+## 📸 Screenshots
+
+| | | |
+|---|---|---|
+| ![]( screenshot/screenshot1.png) | ![]( screenshot/screenshot2.png) | ![]( screenshot/screenshot3.png) |
+| ![]( screenshot/screenshot4.png) | ![]( screenshot/screenshot5.png) | ![]( screenshot/screenshot6.png) |
+| ![]( screenshot/screenshot7.png) | ![]( screenshot/screenshot8.png) | ![]( screenshot/screenshot9.png) |
+
+
+---
+
 ## 📦 Installation (Arch Linux)
 
 ### Option 1: Binary (Recommended)
@@ -78,12 +89,6 @@ Or start it from your application launcher.
 * **Flutter** (Linux desktop)
 * **Dart**
 * GTK-based Linux runtime
-
----
-
-## 📸 Screenshots
-
-* uploading soon *
 
 ---
 
