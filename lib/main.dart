@@ -79,25 +79,6 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int index = 0;
   DateTime selectedDate = DateTime.now();
-  late final Timer _clockTimer;
-  DateTime now = DateTime.now();
-
-  static const _tabTitles = ['Calendar', 'Timer', 'Weekly View', 'Settings'];
-
-  @override
-  void initState() {
-    super.initState();
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() => now = DateTime.now());
-    });
-  }
-
-  @override
-  void dispose() {
-    _clockTimer.cancel();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -132,33 +113,25 @@ class _AppShellState extends State<AppShell> {
                 onSelect: (i) => setState(() => index = i),
               ),
               Expanded(
-                child: Column(
-                  children: [
-                    _TopBar(title: _tabTitles[index], now: now),
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 400),
-                        switchInCurve: Curves.easeInOutCubic,
-                        switchOutCurve: Curves.easeInOutCubic,
-                        transitionBuilder: (child, animation) {
-                          return FadeTransition(
-                            opacity: animation,
-                            child: ScaleTransition(
-                              scale: Tween<double>(begin: 0.95, end: 1.0)
-                                  .animate(
-                                CurvedAnimation(
-                                  parent: animation,
-                                  curve: Curves.easeOutCubic,
-                                ),
-                              ),
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: pages[index],
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  switchInCurve: Curves.easeInOutCubic,
+                  switchOutCurve: Curves.easeInOutCubic,
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(
+                        scale: Tween<double>(begin: 0.95, end: 1.0).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                          ),
+                        ),
+                        child: child,
                       ),
-                    ),
-                  ],
+                    );
+                  },
+                  child: pages[index],
                 ),
               ),
             ],
@@ -201,61 +174,6 @@ class _AmoledBackdrop extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class _TopBar extends StatelessWidget {
-  final String title;
-  final DateTime now;
-
-  const _TopBar({required this.title, required this.now});
-
-  String _two(int v) => v.toString().padLeft(2, '0');
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
-    final timeText =
-        '${_two(now.hour)}:${_two(now.minute)}:${_two(now.second)}';
-
-    final bar = Padding(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 2),
-      child: SizedBox(
-        height: 44,
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                timeText,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: accent,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ).animate().fadeIn(duration: 220.ms).slideY(begin: -0.06, duration: 220.ms);
-
-    if (kIsWeb) return bar;
-    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
-      return DragToMoveArea(child: bar);
-    }
-    return bar;
   }
 }
 
