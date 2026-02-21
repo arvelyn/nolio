@@ -16,7 +16,7 @@ class TodoDB {
 
     db = await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE todos (
@@ -37,6 +37,12 @@ class TodoDB {
             created_at TEXT NOT NULL
           )
         ''');
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+          )
+        ''');
       },
       onUpgrade: (db, old, _) async {
         if (old < 2) {
@@ -51,6 +57,14 @@ class TodoDB {
               type TEXT NOT NULL,
               seconds INTEGER NOT NULL,
               created_at TEXT NOT NULL
+            )
+          ''');
+        }
+        if (old < 4) {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS settings (
+              key TEXT PRIMARY KEY,
+              value TEXT NOT NULL
             )
           ''');
         }
@@ -106,6 +120,39 @@ class TodoDB {
 
   Future<void> deleteTodo(int id) async {
     await db.delete('todos', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> updateTodo({
+    required int id,
+    required String text,
+    required String tag,
+  }) async {
+    await db.update(
+      'todos',
+      {'text': text, 'tag': tag},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> setSetting(String key, String value) async {
+    await db.insert(
+      'settings',
+      {'key': key, 'value': value},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<String?> getSetting(String key) async {
+    final rows = await db.query(
+      'settings',
+      columns: ['value'],
+      where: 'key = ?',
+      whereArgs: [key],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['value']?.toString();
   }
 
   Future<void> addTimerLog({

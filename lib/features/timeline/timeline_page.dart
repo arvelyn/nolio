@@ -99,6 +99,229 @@ class _TimelinePageState extends State<TimelinePage> {
     return parts[0];
   }
 
+  Future<void> _showEditTaskDialog(Map<String, dynamic> todo) async {
+    final textCtrl = TextEditingController(text: todo['text']?.toString() ?? '');
+    final raw = todo['tag']?.toString() ?? '';
+    final tagCtrl = TextEditingController(text: _tagLabel(raw));
+    Color selectedTagColor =
+        raw.isEmpty ? Theme.of(context).colorScheme.primary : _tagColor(raw);
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            Widget colorDot(Color c) {
+              final selected = selectedTagColor.toARGB32() == c.toARGB32();
+              return GestureDetector(
+                onTap: () => setLocal(() => selectedTagColor = c),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  curve: Curves.easeOutCubic,
+                  padding: EdgeInsets.all(selected ? 3.5 : 2.5),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected ? c : c.withValues(alpha: 0.85),
+                      width: selected ? 3 : 2,
+                    ),
+                    boxShadow: selected
+                        ? [
+                            BoxShadow(
+                              color: c.withValues(alpha: 0.35),
+                              blurRadius: 12,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: c,
+                      border: Border.all(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.10),
+                    width: 1,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Edit Task',
+                        style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: textCtrl,
+                        autofocus: true,
+                        maxLines: 3,
+                        minLines: 1,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Task',
+                          hintStyle: TextStyle(color: Colors.white38),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.08),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.10),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Theme.of(ctx).colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: tagCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Tag (optional)',
+                          hintStyle: TextStyle(color: Colors.white38),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.04),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          for (final c in [
+                            Theme.of(ctx).colorScheme.primary,
+                            Colors.blue,
+                            Colors.green,
+                            Colors.orange,
+                            Colors.purple,
+                            Colors.red,
+                          ])
+                            colorDot(c),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(ctx),
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.10),
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'Cancel',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () async {
+                                final text = textCtrl.text.trim();
+                                final tagName = tagCtrl.text.trim();
+                                final tagString = tagName.isNotEmpty
+                                    ? '$tagName|${selectedTagColor.toARGB32()}'
+                                    : '';
+                                if (text.isEmpty) return;
+                                await TodoDB.instance.updateTodo(
+                                  id: todo['id'] as int,
+                                  text: text,
+                                  tag: tagString,
+                                );
+                                if (!ctx.mounted) return;
+                                Navigator.pop(ctx);
+                              },
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(ctx).colorScheme.primary,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'Save',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    textCtrl.dispose();
+    tagCtrl.dispose();
+    await _loadWeek();
+  }
+
   List<_WeekTodoItem> _flattenedWeekTodos() {
     final items = <_WeekTodoItem>[];
     for (final day in weekTasks) {
@@ -224,7 +447,9 @@ class _TimelinePageState extends State<TimelinePage> {
                       final tag = _tagLabel(rawTag);
                       final tagColor = _tagColor(rawTag);
 
-                      return Container(
+                      return GestureDetector(
+                        onTap: () => _showEditTaskDialog(todo),
+                        child: Container(
                             margin: const EdgeInsets.only(bottom: 10),
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
@@ -331,7 +556,8 @@ class _TimelinePageState extends State<TimelinePage> {
                                 ),
                               ],
                             ),
-                          )
+                          ),
+                      )
                           .animate()
                           .fadeIn(
                             delay: Duration(milliseconds: 80 + (index * 40)),

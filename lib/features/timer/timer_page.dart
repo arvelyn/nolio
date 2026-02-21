@@ -24,6 +24,13 @@ class _TimerEngine extends ChangeNotifier {
   int statsRevision = 0;
   bool _transitioning = false;
 
+  int get currentSessionTotalSeconds => _activeSessionSeconds;
+  int get currentSessionElapsedSeconds =>
+      (currentSessionTotalSeconds - remainingSeconds)
+          .clamp(0, currentSessionTotalSeconds);
+  bool get isWorkMode => mode == _TimerMode.work;
+  bool get isBreakMode => mode == _TimerMode.breakTime;
+
   int _durationFor(_TimerMode m) =>
       (m == _TimerMode.work ? workMinutes : breakMinutes) * 60;
   String _dateKey(DateTime d) => d.toIso8601String().split('T')[0];
@@ -486,12 +493,18 @@ class _TimerPageState extends State<TimerPage> {
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
-    final workSeconds = _todayTotals['work'] ?? 0;
-    final breakSeconds = _todayTotals['break'] ?? 0;
-    final totalSeconds = _todayTotals['total'] ?? 0;
-    final workPct = totalSeconds == 0
-        ? 0.0
-        : (workSeconds / totalSeconds) * 100;
+    final dbWorkSeconds = _todayTotals['work'] ?? 0;
+    final dbBreakSeconds = _todayTotals['break'] ?? 0;
+
+    final liveSessionSeconds =
+        _engine.currentSessionElapsedSeconds;
+    final liveWorkSeconds =
+        dbWorkSeconds + (_engine.isWorkMode ? liveSessionSeconds : 0);
+    final liveBreakSeconds =
+        dbBreakSeconds + (_engine.isBreakMode ? liveSessionSeconds : 0);
+    final liveTotalSeconds = liveWorkSeconds + liveBreakSeconds;
+    final workPct =
+        liveTotalSeconds == 0 ? 0.0 : (liveWorkSeconds / liveTotalSeconds) * 100;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -539,14 +552,14 @@ class _TimerPageState extends State<TimerPage> {
                                   Expanded(
                                     child: _StatTile(
                                       label: 'Worked/Studied',
-                                      value: _formatDuration(workSeconds),
+                                      value: _formatDuration(liveWorkSeconds),
                                     ),
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: _StatTile(
                                       label: 'Break',
-                                      value: _formatDuration(breakSeconds),
+                                      value: _formatDuration(liveBreakSeconds),
                                     ),
                                   ),
                                   const SizedBox(width: 10),
@@ -677,8 +690,8 @@ class _TimerPageState extends State<TimerPage> {
                     curve: Curves.easeOutCubic,
                     child: _floatingStatsCard(
                       accent: accent,
-                      workSeconds: workSeconds,
-                      breakSeconds: breakSeconds,
+                      workSeconds: liveWorkSeconds,
+                      breakSeconds: liveBreakSeconds,
                       workPct: workPct,
                     ),
                   ),

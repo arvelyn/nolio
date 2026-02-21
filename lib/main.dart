@@ -18,7 +18,18 @@ void main() async {
   await _configureWindow();
   await TodoDB.instance.init();
 
-  runApp(const NolioApp());
+  final savedTheme = await TodoDB.instance.getSetting('theme');
+  final savedAccent = await TodoDB.instance.getSetting('accent');
+
+  final themeId = savedTheme == null
+      ? NolioThemeId.defaultTheme
+      : NolioThemeId.fromId(savedTheme);
+
+  final accent = savedAccent == null
+      ? const Color(0xFF1DB954)
+      : Color(int.tryParse(savedAccent) ?? 0xFF1DB954);
+
+  runApp(NolioApp(initialThemeId: themeId, initialAccent: accent));
 }
 
 Future<void> _configureWindow() async {
@@ -34,15 +45,28 @@ Future<void> _configureWindow() async {
 }
 
 class NolioApp extends StatefulWidget {
-  const NolioApp({super.key});
+  final NolioThemeId initialThemeId;
+  final Color initialAccent;
+  const NolioApp({
+    super.key,
+    required this.initialThemeId,
+    required this.initialAccent,
+  });
 
   @override
   State<NolioApp> createState() => _NolioAppState();
 }
 
 class _NolioAppState extends State<NolioApp> {
-  Color accent = const Color(0xFF1DB954);
-  NolioThemeId themeId = NolioThemeId.defaultTheme;
+  late Color accent;
+  late NolioThemeId themeId;
+
+  @override
+  void initState() {
+    super.initState();
+    accent = widget.initialAccent;
+    themeId = widget.initialThemeId;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,9 +75,15 @@ class _NolioAppState extends State<NolioApp> {
       theme: NolioThemes.build(themeId: themeId, defaultAccent: accent),
       home: AppShell(
         themeId: themeId,
-        onThemeChange: (t) => setState(() => themeId = t),
+        onThemeChange: (t) {
+          setState(() => themeId = t);
+          unawaited(TodoDB.instance.setSetting('theme', t.id));
+        },
         defaultAccent: accent,
-        onAccentChange: (c) => setState(() => accent = c),
+        onAccentChange: (c) {
+          setState(() => accent = c);
+          unawaited(TodoDB.instance.setSetting('accent', c.toARGB32().toString()));
+        },
       ),
     );
   }

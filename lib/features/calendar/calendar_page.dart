@@ -68,6 +68,243 @@ class _CalendarPageState extends State<CalendarPage> {
     if (mounted) setState(() => daysWithTasks = keys);
   }
 
+  String _tagLabel(String raw) {
+    if (!raw.contains('|')) return '';
+    final parts = raw.split('|');
+    if (parts.isEmpty) return '';
+    return parts[0];
+  }
+
+  Color _tagColor(String raw) {
+    if (!raw.contains('|')) return Colors.grey;
+    final parts = raw.split('|');
+    if (parts.length != 2) return Colors.grey;
+    return Color(int.tryParse(parts[1]) ?? Colors.grey.toARGB32());
+  }
+
+  Future<void> _showEditTaskDialog(Map<String, dynamic> todo) async {
+    final textCtrl = TextEditingController(text: todo['text']?.toString() ?? '');
+    final raw = todo['tag']?.toString() ?? '';
+    final tagCtrl = TextEditingController(text: _tagLabel(raw));
+    Color selectedTagColor = raw.isEmpty ? Theme.of(context).colorScheme.primary : _tagColor(raw);
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setLocal) {
+            Widget colorDot(Color c) {
+              final selected = selectedTagColor.toARGB32() == c.toARGB32();
+              return GestureDetector(
+                onTap: () => setLocal(() => selectedTagColor = c),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  curve: Curves.easeOutCubic,
+                  padding: EdgeInsets.all(selected ? 3.5 : 2.5),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: selected ? c : c.withValues(alpha: 0.85),
+                      width: selected ? 3 : 2,
+                    ),
+                    boxShadow: selected
+                        ? [
+                            BoxShadow(
+                              color: c.withValues(alpha: 0.35),
+                              blurRadius: 12,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Container(
+                    width: 22,
+                    height: 22,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: c,
+                      border: Border.all(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.10),
+                    width: 1,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Edit Task',
+                        style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: textCtrl,
+                        autofocus: true,
+                        maxLines: 3,
+                        minLines: 1,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Task',
+                          hintStyle: TextStyle(color: Colors.white38),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.08),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.10),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: Theme.of(ctx).colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: tagCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Tag (optional)',
+                          hintStyle: TextStyle(color: Colors.white38),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.04),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          for (final c in [
+                            Theme.of(ctx).colorScheme.primary,
+                            Colors.blue,
+                            Colors.green,
+                            Colors.orange,
+                            Colors.purple,
+                            Colors.red,
+                          ])
+                            colorDot(c),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(ctx),
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.10),
+                                  ),
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'Cancel',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () async {
+                                final text = textCtrl.text.trim();
+                                final tagName = tagCtrl.text.trim();
+                                final tagString = tagName.isNotEmpty
+                                    ? '$tagName|${selectedTagColor.toARGB32()}'
+                                    : '';
+                                if (text.isEmpty) return;
+                                await TodoDB.instance.updateTodo(
+                                  id: todo['id'] as int,
+                                  text: text,
+                                  tag: tagString,
+                                );
+                                if (!ctx.mounted) return;
+                                Navigator.pop(ctx);
+                              },
+                              child: Container(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(ctx).colorScheme.primary,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Center(
+                                  child: Text(
+                                    'Save',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    textCtrl.dispose();
+    tagCtrl.dispose();
+    await loadTodos();
+    await loadTasksForMonth(focusedMonth);
+  }
+
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
@@ -129,21 +366,13 @@ class _CalendarPageState extends State<CalendarPage> {
                     itemBuilder: (context, i) {
                       final t = todos[i];
                       final raw = t['tag']?.toString() ?? '';
-                      String tag = '';
-                      Color tagColor = Colors.grey;
-
-                      if (raw.contains('|')) {
-                        final parts = raw.split('|');
-                        tag = parts[0];
-                        tagColor = Color(int.parse(parts[1]));
-                      }
+                      final tag = _tagLabel(raw);
+                      final tagColor = _tagColor(raw);
 
                       final isDone = (t['done'] as int) == 1;
 
                       return GestureDetector(
-                        onTap: () {
-                          // Show task details - can be enhanced later
-                        },
+                        onTap: () => _showEditTaskDialog(t),
                         child: Container(
                           margin: const EdgeInsets.symmetric(vertical: 6),
                           padding: const EdgeInsets.all(12),
@@ -313,200 +542,290 @@ class _AnimatedAddButtonState extends State<_AnimatedAddButton>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[900],
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
-              width: 1,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Text(
-                  'Add Task',
-                  style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                )
-                    .animate()
-                    .fadeIn(duration: 300.ms, curve: Curves.easeInOutCubic)
-                    .slideX(begin: -0.1, duration: 300.ms, curve: Curves.easeOutCubic),
-
-                const SizedBox(height: 8),
-
-                // Date info
-                Text(
-                  'Selected Date: $dateFormatter',
-                  style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                        color: Colors.white54,
-                      ),
-                )
-                    .animate()
-                    .fadeIn(delay: 50.ms, duration: 300.ms, curve: Curves.easeInOutCubic)
-                    .slideX(begin: -0.1, delay: 50.ms, duration: 300.ms, curve: Curves.easeOutCubic),
-
-                const SizedBox(height: 20),
-
-                // Input field
-                TextField(
-                  controller: taskCtrl,
-                  autofocus: true,
-                  maxLines: 3,
-                  minLines: 1,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'What do you want to do?',
-                    hintStyle: TextStyle(color: Colors.white38),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.08),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.1),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: widget.accent,
-                        width: 2,
-                      ),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) {
+          Widget colorDot(Color c) {
+            final selected = selectedTagColor.toARGB32() == c.toARGB32();
+            return GestureDetector(
+              onTap: () => setLocal(() => selectedTagColor = c),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                curve: Curves.easeOutCubic,
+                padding: EdgeInsets.all(selected ? 3.5 : 2.5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected ? c : c.withValues(alpha: 0.85),
+                    width: selected ? 3 : 2,
+                  ),
+                  boxShadow: selected
+                      ? [
+                          BoxShadow(
+                            color: c.withValues(alpha: 0.35),
+                            blurRadius: 12,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: c,
+                    border: Border.all(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      width: 1,
                     ),
                   ),
-                )
-                    .animate()
-                    .fadeIn(delay: 100.ms, duration: 300.ms, curve: Curves.easeInOutCubic)
-                    .slideY(begin: 0.1, delay: 100.ms, duration: 300.ms, curve: Curves.easeOutCubic),
-
-                const SizedBox(height: 12),
-
-                // Tag input + color picker
-                TextField(
-                  controller: tagCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Tag (optional)',
-                    hintStyle: TextStyle(color: Colors.white38),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.04),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
                 ),
+              ),
+            );
+          }
 
-                const SizedBox(height: 12),
-
-                Wrap(
-                  spacing: 8,
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (final c in [widget.accent, Colors.blue, Colors.green, Colors.orange, Colors.purple, Colors.red])
-                      GestureDetector(
-                        onTap: () => setState(() => selectedTagColor = c),
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            color: c,
-                            shape: BoxShape.circle,
-                            border: selectedTagColor == c ? Border.all(color: Colors.white, width: 2) : null,
+                    // Header
+                    Text(
+                      'Add Task',
+                      style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    )
+                        .animate()
+                        .fadeIn(duration: 300.ms, curve: Curves.easeInOutCubic)
+                        .slideX(
+                          begin: -0.1,
+                          duration: 300.ms,
+                          curve: Curves.easeOutCubic,
+                        ),
+
+                    const SizedBox(height: 8),
+
+                    // Date info
+                    Text(
+                      'Selected Date: $dateFormatter',
+                      style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                            color: Colors.white54,
+                          ),
+                    )
+                        .animate()
+                        .fadeIn(
+                          delay: 50.ms,
+                          duration: 300.ms,
+                          curve: Curves.easeInOutCubic,
+                        )
+                        .slideX(
+                          begin: -0.1,
+                          delay: 50.ms,
+                          duration: 300.ms,
+                          curve: Curves.easeOutCubic,
+                        ),
+
+                    const SizedBox(height: 20),
+
+                    // Input field
+                    TextField(
+                      controller: taskCtrl,
+                      autofocus: true,
+                      maxLines: 3,
+                      minLines: 1,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'What do you want to do?',
+                        hintStyle: TextStyle(color: Colors.white38),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.08),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.1),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => Navigator.pop(ctx),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1),
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Cancel',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                          .animate()
-                          .fadeIn(delay: 150.ms, duration: 300.ms, curve: Curves.easeInOutCubic)
-                          .slideY(begin: 0.1, delay: 150.ms, duration: 300.ms, curve: Curves.easeOutCubic),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          final text = taskCtrl.text.trim();
-                          final tagName = tagCtrl.text.trim();
-                          final tagString = tagName.isNotEmpty
-                              ? '$tagName|${selectedTagColor.toARGB32()}'
-                              : '';
-                          if (text.isNotEmpty) {
-                            widget.onAddTask({'text': text, 'tag': tagString});
-                            Navigator.pop(ctx);
-                          }
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
                             color: widget.accent,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Center(
-                            child: Text(
-                              'Add Task',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            width: 2,
                           ),
                         ),
-                      )
-                          .animate()
-                          .fadeIn(delay: 150.ms, duration: 300.ms, curve: Curves.easeInOutCubic)
-                          .slideY(begin: 0.1, delay: 150.ms, duration: 300.ms, curve: Curves.easeOutCubic),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                    )
+                        .animate()
+                        .fadeIn(
+                          delay: 100.ms,
+                          duration: 300.ms,
+                          curve: Curves.easeInOutCubic,
+                        )
+                        .slideY(
+                          begin: 0.1,
+                          delay: 100.ms,
+                          duration: 300.ms,
+                          curve: Curves.easeOutCubic,
+                        ),
+
+                    const SizedBox(height: 12),
+
+                    // Tag input + color picker
+                    TextField(
+                      controller: tagCtrl,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Tag (optional)',
+                        hintStyle: TextStyle(color: Colors.white38),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.04),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        for (final c in [
+                          widget.accent,
+                          Colors.blue,
+                          Colors.green,
+                          Colors.orange,
+                          Colors.purple,
+                          Colors.red,
+                        ])
+                          colorDot(c),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => Navigator.pop(ctx),
+                            child: Container(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.1),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                              .animate()
+                              .fadeIn(
+                                delay: 150.ms,
+                                duration: 300.ms,
+                                curve: Curves.easeInOutCubic,
+                              )
+                              .slideY(
+                                begin: 0.1,
+                                delay: 150.ms,
+                                duration: 300.ms,
+                                curve: Curves.easeOutCubic,
+                              ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              final text = taskCtrl.text.trim();
+                              final tagName = tagCtrl.text.trim();
+                              final tagString = tagName.isNotEmpty
+                                  ? '$tagName|${selectedTagColor.toARGB32()}'
+                                  : '';
+                              if (text.isNotEmpty) {
+                                widget.onAddTask({
+                                  'text': text,
+                                  'tag': tagString,
+                                });
+                                Navigator.pop(ctx);
+                              }
+                            },
+                            child: Container(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: widget.accent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'Add Task',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                              .animate()
+                              .fadeIn(
+                                delay: 150.ms,
+                                duration: 300.ms,
+                                curve: Curves.easeInOutCubic,
+                              )
+                              .slideY(
+                                begin: 0.1,
+                                delay: 150.ms,
+                                duration: 300.ms,
+                                curve: Curves.easeOutCubic,
+                              ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     ).then((_) {
       taskCtrl.dispose();
+      tagCtrl.dispose();
     });
   }
 
