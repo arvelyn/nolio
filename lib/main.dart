@@ -280,26 +280,35 @@ class _SideNav extends StatelessWidget {
       Icons.settings, // Settings
     ];
 
+    const itemGap = 18.0;
+    final items = <Widget>[];
+    for (int i = 0; i < icons.length; i++) {
+      items.add(
+        _NavIcon(
+          icon: icons[i],
+          selected: selectedIndex == i,
+          accent: accent,
+          onTap: () => onSelect(i),
+        ),
+      );
+      if (i != icons.length - 1) items.add(const SizedBox(height: itemGap));
+    }
+
     final content = SizedBox(
       width: 72,
-      child: Column(
-        children: [
-          const Spacer(),
-          for (int i = 0; i < icons.length; i++)
-            _NavIcon(
-              icon: icons[i],
-              selected: selectedIndex == i,
-              accent: accent,
-              onTap: () => onSelect(i),
-            ),
-          const Spacer(),
-        ],
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: items,
+        ),
       ),
     );
 
+    final outerPadding = const EdgeInsets.fromLTRB(12, 12, 0, 18);
+
     if (glass) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 0, 18),
+        padding: outerPadding,
         child: NolioPanel(
           borderRadius: BorderRadius.circular(22),
           child: content,
@@ -307,10 +316,13 @@ class _SideNav extends StatelessWidget {
       );
     }
 
-    return Container(
-      width: 72,
-      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.15)),
-      child: content,
+    return Padding(
+      padding: outerPadding,
+      child: Container(
+        width: 72,
+        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.15)),
+        child: content,
+      ),
     );
   }
 }
@@ -392,7 +404,6 @@ class _NavIconState extends State<_NavIcon>
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             curve: Curves.easeInOutQuad,
-            margin: const EdgeInsets.symmetric(vertical: 14),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: widget.selected

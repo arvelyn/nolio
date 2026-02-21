@@ -128,7 +128,7 @@ class NolioThemes {
       case NolioThemeId.defaultTheme:
         return _default(defaultAccent);
       case NolioThemeId.amoled:
-        return _amoled();
+        return _amoled(defaultAccent);
       case NolioThemeId.gruvbox:
         return _fixed(
           seed: const Color(0xFFD79921),
@@ -225,18 +225,16 @@ class NolioThemes {
     );
   }
 
-  static ThemeData _amoled() {
+  static ThemeData _amoled(Color accent) {
     const background = Colors.black;
     const surface = Color(0xFF0B0B0D);
-    const primary = Color(0xFF1DB954);
-    const secondary = Color(0xFF4CC38A);
     const error = Color(0xFFFB4934);
 
     final scheme = ColorScheme.fromSeed(
-      seedColor: primary,
+      seedColor: accent,
       brightness: Brightness.dark,
     ).copyWith(
-      secondary: secondary,
+      secondary: accent,
       surface: surface,
       error: error,
       outline: Colors.white.withValues(alpha: 0.12),

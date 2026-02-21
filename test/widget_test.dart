@@ -22,9 +22,9 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle(const Duration(seconds: 2));
 
     expect(find.text('Theme'), findsOneWidget);
-    expect(find.text(NolioThemeId.gruvbox.label), findsOneWidget);
-    expect(find.text(NolioThemeId.catppuccin.label), findsOneWidget);
+    expect(find.byType(DropdownMenu<NolioThemeId>), findsOneWidget);
   });
 }

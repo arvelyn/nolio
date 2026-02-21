@@ -16,7 +16,8 @@ class SettingsPage extends StatelessWidget {
     required this.onAccentChange,
   });
 
-  bool get _showAccentPicker => themeId == NolioThemeId.defaultTheme;
+  bool get _showAccentPicker =>
+      themeId == NolioThemeId.defaultTheme || themeId == NolioThemeId.amoled;
 
   List<NolioThemeId> get _themes => const [
         NolioThemeId.defaultTheme,
@@ -28,43 +29,18 @@ class SettingsPage extends StatelessWidget {
         NolioThemeId.catppuccin,
       ];
 
+  String _themeDescription(NolioThemeId id) {
+    return switch (id) {
+      NolioThemeId.defaultTheme => 'Seeded accent + pick your color',
+      NolioThemeId.amoled => 'Pure black + glass panels + pick your color',
+      _ => 'Fixed palette',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Colors.primaries;
     final accent = Theme.of(context).colorScheme.primary;
-
-    final tiles = _themes
-        .map(
-          (t) => Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: t == themeId
-                    ? accent.withValues(alpha: 0.35)
-                    : Colors.white.withValues(alpha: 0.06),
-              ),
-            ),
-            child: RadioListTile<NolioThemeId>(
-              value: t,
-              activeColor: accent,
-              title: Text(t.label),
-              subtitle: Text(
-                switch (t) {
-                  NolioThemeId.defaultTheme =>
-                    'Seeded accent + pick your color',
-                  NolioThemeId.amoled => 'Pure black + glass panels',
-                  _ => 'Fixed palette',
-                },
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.65),
-                ),
-              ),
-            ),
-          ),
-        )
-        .toList();
 
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -83,12 +59,24 @@ class SettingsPage extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          RadioGroup<NolioThemeId>(
-            groupValue: themeId,
-            onChanged: (v) {
+          DropdownMenu<NolioThemeId>(
+            initialSelection: themeId,
+            onSelected: (v) {
               if (v != null) onThemeChange(v);
             },
-            child: Column(children: tiles),
+            dropdownMenuEntries: _themes
+                .map(
+                  (t) => DropdownMenuEntry<NolioThemeId>(
+                    value: t,
+                    label: t.label,
+                  ),
+                )
+                .toList(),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _themeDescription(themeId),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.65)),
           ),
 
           if (_showAccentPicker) ...[
