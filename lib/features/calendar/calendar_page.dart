@@ -83,7 +83,7 @@ class _CalendarPageState extends State<CalendarPage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.06),
+                  color: Colors.white.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: Column(
@@ -110,7 +110,7 @@ class _CalendarPageState extends State<CalendarPage> {
                       shape: BoxShape.circle,
                     ),
                     todayDecoration: BoxDecoration(
-                      color: accent.withOpacity(0.3),
+                      color: accent.withValues(alpha: 0.3),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -149,13 +149,13 @@ class _CalendarPageState extends State<CalendarPage> {
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             color: isDone
-                                ? Colors.white.withOpacity(0.02)
-                                : Colors.white.withOpacity(0.05),
+                                ? Colors.white.withValues(alpha: 0.02)
+                                : Colors.white.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(12),
                             border: Border(
                               left: BorderSide(
                                 width: 4,
-                                color: isDone ? accent.withOpacity(0.3) : accent,
+                                color: isDone ? accent.withValues(alpha: 0.3) : accent,
                               ),
                             ),
                           ),
@@ -210,7 +210,7 @@ class _CalendarPageState extends State<CalendarPage> {
                                 child: Icon(
                                   Icons.delete_outline,
                                   size: 18,
-                                  color: Colors.redAccent.withOpacity(0.7),
+                                  color: Colors.redAccent.withValues(alpha: 0.7),
                                 )
                                     .animate()
                                     .scale(curve: Curves.easeInOutCubic),
@@ -320,7 +320,7 @@ class _AnimatedAddButtonState extends State<_AnimatedAddButton>
             color: Colors.grey[900],
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               width: 1,
             ),
           ),
@@ -367,11 +367,11 @@ class _AnimatedAddButtonState extends State<_AnimatedAddButton>
                     hintText: 'What do you want to do?',
                     hintStyle: TextStyle(color: Colors.white38),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.08),
+                    fillColor: Colors.white.withValues(alpha: 0.08),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.white.withValues(alpha: 0.1),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -401,7 +401,7 @@ class _AnimatedAddButtonState extends State<_AnimatedAddButton>
                     hintText: 'Tag (optional)',
                     hintStyle: TextStyle(color: Colors.white38),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.04),
+                    fillColor: Colors.white.withValues(alpha: 0.04),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -442,10 +442,10 @@ class _AnimatedAddButtonState extends State<_AnimatedAddButton>
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
+                            color: Colors.white.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.1),
+                              color: Colors.white.withValues(alpha: 0.1),
                             ),
                           ),
                           child: Center(
@@ -469,7 +469,9 @@ class _AnimatedAddButtonState extends State<_AnimatedAddButton>
                         onTap: () {
                           final text = taskCtrl.text.trim();
                           final tagName = tagCtrl.text.trim();
-                          final tagString = tagName.isNotEmpty ? '$tagName|${selectedTagColor.value}' : '';
+                          final tagString = tagName.isNotEmpty
+                              ? '$tagName|${selectedTagColor.toARGB32()}'
+                              : '';
                           if (text.isNotEmpty) {
                             widget.onAddTask({'text': text, 'tag': tagString});
                             Navigator.pop(ctx);
@@ -529,7 +531,9 @@ class _AnimatedAddButtonState extends State<_AnimatedAddButton>
                   color: widget.accent,
                   boxShadow: [
                     BoxShadow(
-                      color: widget.accent.withOpacity(0.4 + (_controller.value * 0.2)),
+                      color: widget.accent.withValues(
+                        alpha: 0.4 + (_controller.value * 0.2),
+                      ),
                       blurRadius: 12 + (_controller.value * 4),
                       spreadRadius: 2 + (_controller.value * 2),
                     ),

@@ -11,6 +11,7 @@ import 'features/calendar/calendar_page.dart';
 import 'features/timer/timer_page.dart';
 import 'features/timeline/timeline_page.dart';
 import 'features/settings/settings_page.dart';
+import 'theme/nolio_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,27 +42,35 @@ class NolioApp extends StatefulWidget {
 
 class _NolioAppState extends State<NolioApp> {
   Color accent = const Color(0xFF1DB954);
+  NolioThemeId themeId = NolioThemeId.defaultTheme;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: accent,
-          brightness: Brightness.dark,
-        ),
+      theme: NolioThemes.build(themeId: themeId, defaultAccent: accent),
+      home: AppShell(
+        themeId: themeId,
+        onThemeChange: (t) => setState(() => themeId = t),
+        defaultAccent: accent,
+        onAccentChange: (c) => setState(() => accent = c),
       ),
-      home: AppShell(onAccentChange: (c) => setState(() => accent = c)),
     );
   }
 }
 
 class AppShell extends StatefulWidget {
+  final NolioThemeId themeId;
+  final ValueChanged<NolioThemeId> onThemeChange;
+  final Color defaultAccent;
   final ValueChanged<Color> onAccentChange;
-  const AppShell({super.key, required this.onAccentChange});
+  const AppShell({
+    super.key,
+    required this.themeId,
+    required this.onThemeChange,
+    required this.defaultAccent,
+    required this.onAccentChange,
+  });
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -99,46 +108,97 @@ class _AppShellState extends State<AppShell> {
       ),
       const _ContentShell(child: TimerPage()),
       const _ContentShell(child: TimelinePage()),
-      _ContentShell(child: SettingsPage(onAccentChange: widget.onAccentChange)),
+      _ContentShell(
+        child: SettingsPage(
+          themeId: widget.themeId,
+          onThemeChange: widget.onThemeChange,
+          defaultAccent: widget.defaultAccent,
+          onAccentChange: widget.onAccentChange,
+        ),
+      ),
     ];
 
+    final glass = NolioTheme.of(context).glass;
+
     return Scaffold(
-      body: Row(
+      body: Stack(
         children: [
-          _SideNav(
-            selectedIndex: index,
-            onSelect: (i) => setState(() => index = i),
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                _TopBar(title: _tabTitles[index], now: now),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    switchInCurve: Curves.easeInOutCubic,
-                    switchOutCurve: Curves.easeInOutCubic,
-                    transitionBuilder: (child, animation) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: ScaleTransition(
-                          scale: Tween<double>(begin: 0.95, end: 1.0).animate(
-                            CurvedAnimation(
-                              parent: animation,
-                              curve: Curves.easeOutCubic,
+          if (glass)
+            _AmoledBackdrop(accent: Theme.of(context).colorScheme.primary),
+          Row(
+            children: [
+              _SideNav(
+                selectedIndex: index,
+                onSelect: (i) => setState(() => index = i),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    _TopBar(title: _tabTitles[index], now: now),
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 400),
+                        switchInCurve: Curves.easeInOutCubic,
+                        switchOutCurve: Curves.easeInOutCubic,
+                        transitionBuilder: (child, animation) {
+                          return FadeTransition(
+                            opacity: animation,
+                            child: ScaleTransition(
+                              scale: Tween<double>(begin: 0.95, end: 1.0)
+                                  .animate(
+                                CurvedAnimation(
+                                  parent: animation,
+                                  curve: Curves.easeOutCubic,
+                                ),
+                              ),
+                              child: child,
                             ),
-                          ),
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: pages[index],
-                  ),
+                          );
+                        },
+                        child: pages[index],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AmoledBackdrop extends StatelessWidget {
+  final Color accent;
+  const _AmoledBackdrop({required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    final c1 = accent.withValues(alpha: 0.16);
+    final c2 = Theme.of(context).colorScheme.secondary.withValues(alpha: 0.12);
+
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.black,
+          gradient: RadialGradient(
+            center: const Alignment(-0.55, -0.6),
+            radius: 1.2,
+            colors: [c1, Colors.transparent],
+            stops: const [0.0, 1.0],
+          ),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: const Alignment(0.75, 0.7),
+              radius: 1.3,
+              colors: [c2, Colors.transparent],
+              stops: const [0.0, 1.0],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -211,6 +271,7 @@ class _SideNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
+    final glass = NolioTheme.of(context).glass;
 
     final icons = [
       Icons.calendar_month, // Calendar
@@ -219,9 +280,8 @@ class _SideNav extends StatelessWidget {
       Icons.settings, // Settings
     ];
 
-    return Container(
+    final content = SizedBox(
       width: 72,
-      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.15)),
       child: Column(
         children: [
           const Spacer(),
@@ -235,6 +295,22 @@ class _SideNav extends StatelessWidget {
           const Spacer(),
         ],
       ),
+    );
+
+    if (glass) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 0, 18),
+        child: NolioPanel(
+          borderRadius: BorderRadius.circular(22),
+          child: content,
+        ),
+      );
+    }
+
+    return Container(
+      width: 72,
+      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.15)),
+      child: content,
     );
   }
 }
@@ -345,16 +421,7 @@ class _ContentShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 18, 18),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: child,
-            ),
-          ),
+          child: NolioPanel(child: child),
         )
         .animate()
         .fadeIn(duration: 400.ms, curve: Curves.easeInOutCubic)
